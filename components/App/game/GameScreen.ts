@@ -201,7 +201,7 @@ export class GameScreen extends Screen {
        const res = enemy.update(ts, playerPos);
        if (res.didShoot && res.muzzlePos && res.dir) {
            const quat = Quaternion.createFromEuler(enemy.rotation, 0, 0, 'YXZ');
-           this.spawnProjectile(ProjectileType.SHELL, res.muzzlePos[0], res.muzzlePos[1], res.muzzlePos[2], quat, 'enemy', 0.8);
+           this.spawnProjectile(ProjectileType.SHELL, res.muzzlePos[0], res.muzzlePos[1], res.muzzlePos[2], quat, 'enemy', 1.0);
            
            const exp = this.explosionPool.acquire() as Explosion;
            if (exp) {
@@ -279,13 +279,21 @@ export class GameScreen extends Screen {
     const bPos = this.tank.barrel.getPosition();
     const bRot = this.tank.barrel.getQuaternion();
     const forward = bRot.rotateVector([0, 0, -1]);
-    const spawnPos = [bPos[0] + forward[0] * 2, bPos[1] + forward[1] * 2, bPos[2] + forward[2] * 2] as vec3;
-    this.spawnProjectile(type, spawnPos[0], spawnPos[1], spawnPos[2], bRot, 'player');
+    
+    let spawnX = bPos[0] + forward[0] * 2;
+    let spawnY = bPos[1] + forward[1] * 2;
+    let spawnZ = bPos[2] + forward[2] * 2;
+
+    if (type === ProjectileType.SHELL) {
+        spawnY = 2.0; // Force enemy height level for shells
+    }
+
+    this.spawnProjectile(type, spawnX, spawnY, spawnZ, bRot, 'player');
     
     // Muzzle Flash
     const exp = this.explosionPool.acquire() as Explosion;
     if (exp) {
-        exp.reset(spawnPos[0], spawnPos[1], spawnPos[2], type === ProjectileType.GRENADE ? [1.0, 0.5, 0.2] : [1.0, 0.9, 0.3], forward, type === ProjectileType.GRENADE ? 2.5 : 1.5, 'muzzle');
+        exp.reset(spawnX, spawnY, spawnZ, type === ProjectileType.GRENADE ? [1.0, 0.5, 0.2] : [1.0, 0.9, 0.3], forward, type === ProjectileType.GRENADE ? 2.5 : 1.5, 'muzzle');
         this.explosions.push(exp);
     }
   }
@@ -328,7 +336,17 @@ export class GameScreen extends Screen {
   }
 
   spawnProjectile(type: ProjectileType, x: number, y: number, z: number, q: Quaternion, ownerId: string, speedMod: number = 1.0) {
-    const direction = q.rotateVector([0, 0, -1]);
+    let finalY = y;
+    let finalQ = q;
+
+    if (type === ProjectileType.SHELL) {
+        finalY = 2.0; // Maintain enemy height level
+        const directionRaw = q.rotateVector([0, 0, -1]);
+        const yaw = Math.atan2(-directionRaw[0], -directionRaw[2]);
+        finalQ = Quaternion.createFromEuler(yaw, 0, 0, 'YXZ'); // Horizontal projection
+    }
+
+    const direction = finalQ.rotateVector([0, 0, -1]);
     const pMesh = type === ProjectileType.GRENADE ? this.grenadeMesh : this.shellMesh;
     
     // Physics body
@@ -336,7 +354,7 @@ export class GameScreen extends Screen {
       width: type === ProjectileType.GRENADE ? 0.6 : 0.4,
       height: type === ProjectileType.GRENADE ? 0.6 : 0.4,
       depth: type === ProjectileType.GRENADE ? 0.6 : 1.2,
-      x, y, z,
+      x: x, y: finalY, z: z,
       motionType: Gfx3Jolt.EMotionType_Dynamic,
       layer: JOLT_LAYER_MOVING,
       settings: { 
@@ -346,8 +364,12 @@ export class GameScreen extends Screen {
       }
     });
 
-    let forwardSpeed = type === ProjectileType.GRENADE ? 30 : 70;
-    let upwardVel = type === ProjectileType.GRENADE ? 15 : 0.5;
+    if (type === ProjectileType.SHELL) {
+        gfx3JoltManager.bodyInterface.SetGravityFactor(pBody.body.GetID(), 0); // Shells never drop
+    }
+
+    let forwardSpeed = type === ProjectileType.GRENADE ? 30 : 120; // Faster shells for linear feel
+    let upwardVel = type === ProjectileType.GRENADE ? 15 : 0;
     
     forwardSpeed *= speedMod;
 
