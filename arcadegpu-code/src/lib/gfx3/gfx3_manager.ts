@@ -19,6 +19,7 @@ export interface VertexSubBuffer {
 class Gfx3Manager {
   adapter: GPUAdapter;
   device: GPUDevice;
+  deviceLost: boolean;
   canvas: HTMLCanvasElement;
   ctx: GPUCanvasContext;
   renderingTextureView: GPUTextureView | null;
@@ -43,6 +44,7 @@ class Gfx3Manager {
   constructor() {
     this.adapter = {} as GPUAdapter;
     this.device = {} as GPUDevice;
+    this.deviceLost = false;
     this.canvas = {} as HTMLCanvasElement;
     this.ctx = {} as GPUCanvasContext;
 
@@ -95,13 +97,21 @@ class Gfx3Manager {
 
     const isRealDevice = this.device && typeof this.device.pushErrorScope === 'function';
     if (!isRealDevice) {
-      this.device = await this.adapter.requestDevice();
-      this.device.lost.then((info) => {
-        console.error('Gfx3Manager: WebGPU Device lost!', info.message, info.reason);
-        // We don't throw hero to avoid crashing the app immediately if it's a transient loss
-        // But we should probably mark it for re-initialization
-        this.device = {} as GPUDevice; 
-      });
+      try {
+        this.device = await this.adapter.requestDevice();
+        this.deviceLost = false;
+        this.device.lost.then((info) => {
+          console.error('Gfx3Manager: WebGPU Device lost!', info.message, info.reason);
+          this.deviceLost = true;
+          if (info.reason !== 'destroyed') {
+            // If it's not a voluntary destruction, the state is unrecoverable without a page reload or full engine reset
+            console.warn('Attempting to trigger recovery or notifying user...');
+          }
+        });
+      } catch (err) {
+        console.error('Gfx3Manager::initialize: Failed to request device', err);
+        throw err;
+      }
     }
 
     this.canvas = <HTMLCanvasElement>document.getElementById('CANVAS_3D')!;
@@ -153,6 +163,7 @@ class Gfx3Manager {
    * Warning: You need to call this method after your draw calls.
    */
   endDrawing() {
+    if (this.deviceLost || !this.device.createBuffer) return;
     if (this.vertexSubBuffersSize > 0 && this.vertexSubBuffersSize != this.vertexBuffer.size) {
       this.vertexBuffer.destroy();
       this.vertexBuffer = this.device.createBuffer({ size: this.vertexSubBuffersSize, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
@@ -177,6 +188,7 @@ class Gfx3Manager {
    * Warning: You need to call this method before your render calls.
    */
   beginRender(): void {
+    if (this.deviceLost || !this.device.createCommandEncoder) return;
     this.commandEncoder = this.device.createCommandEncoder();
     this.lastRenderStart = Date.now();
   }
@@ -186,6 +198,7 @@ class Gfx3Manager {
    * Warning: You need to call this method before the render calls you want include in this pass.
    */
   beginPassRender(viewIndex: number): void {
+    if (this.deviceLost || !this.ctx.getCurrentTexture) return;
     const view = this.views[viewIndex];
     const viewport = view.getViewport();
     const viewportX = this.canvas.width * viewport.xFactor;
@@ -245,6 +258,7 @@ class Gfx3Manager {
    * Warning: You need to call this method after your render calls.
    */
   endRender(): void {
+    if (this.deviceLost || !this.device.queue) return;
     this.device.queue.submit([this.commandEncoder.finish()]);
     this.lastRenderTime = Date.now() - this.lastRenderStart;
   }
