@@ -92,6 +92,11 @@ class Gfx3Manager {
       console.error('Gfx3Manager::initialize: CANVAS_3D not found!');
       throw new Error('Gfx3Manager::Gfx3Manager: CANVAS_3D not found');
     }
+    
+    if (this.canvas.clientWidth === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.initialize();
+    }
     console.log('Gfx3Manager::initialize: Canvas found', this.canvas.clientWidth, this.canvas.clientHeight);
 
     this.ctx = this.canvas.getContext('webgpu')!;

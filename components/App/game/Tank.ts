@@ -362,7 +362,7 @@ export class Tank {
     if (Tank.projMesh && Tank.projGrenadeMesh) {
       for (const p of this.projectiles) {
          const meshToDraw = p.type === 'grenade' ? Tank.projGrenadeMesh : Tank.projMesh;
-         const scale: [number, number, number] = p.type === 'grenade' ? [1.5, 1.5, 1.5] : [1, 1, 1];
+         const scale: [number, number, number] = p.type === 'grenade' ? [1.5, 1.5, 1.5] : [2.0, 2.0, 2.0];
          const pPos = p.body.body.GetPosition();
          let q = p.rot;
          if (p.type === 'grenade') {
