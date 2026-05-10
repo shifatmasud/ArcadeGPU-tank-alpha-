@@ -76,16 +76,29 @@ class Gfx3Manager {
       throw new Error('Gfx3Manager::Gfx3Manager: WebGPU cannot be initialized - navigator.gpu not found');
     }
 
-    this.adapter = (await navigator.gpu.requestAdapter())!;
+    if (!this.adapter.requestDevice) {
+      this.adapter = (await navigator.gpu.requestAdapter({
+        powerPreference: 'high-performance'
+      }))!;
+
+      if (!this.adapter) {
+        this.adapter = (await navigator.gpu.requestAdapter({
+          forceFallbackAdapter: true
+        }))!;
+      }
+    }
+
     if (!this.adapter) {
-      UT.FAIL('This browser appears to support WebGPU but it\'s disabled');
+      UT.FAIL('This browser appears to support WebGPU but no adapter was found');
       throw new Error('Gfx3Manager::Gfx3Manager: WebGPU cannot be initialized - Adapter not found');
     }
 
-    this.device = await this.adapter.requestDevice();
-    this.device.lost.then(() => {
-      throw new Error('Gfx3Manager::Gfx3Manager: WebGPU cannot be initialized - Device has been lost');
-    });
+    if (!this.device.pushErrorScope) {
+      this.device = await this.adapter.requestDevice();
+      this.device.lost.then(() => {
+        throw new Error('Gfx3Manager::Gfx3Manager: WebGPU cannot be initialized - Device has been lost');
+      });
+    }
 
     this.canvas = <HTMLCanvasElement>document.getElementById('CANVAS_3D')!;
     if (!this.canvas) {
@@ -94,7 +107,7 @@ class Gfx3Manager {
     }
     
     if (this.canvas.clientWidth === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
         return this.initialize();
     }
     console.log('Gfx3Manager::initialize: Canvas found', this.canvas.clientWidth, this.canvas.clientHeight);
