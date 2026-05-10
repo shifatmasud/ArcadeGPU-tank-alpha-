@@ -146,7 +146,8 @@ const App = () => {
         
         activeFires.current.add(type);
         if (gameScreenRef.current) {
-            gameScreenRef.current.virtualFire = type; // The tank will pick the latest or whichever
+            if (type === 'normal') gameScreenRef.current.virtualFireNormal = true;
+            if (type === 'grenade') gameScreenRef.current.virtualFireGrenade = true;
         }
         (e.target as HTMLElement).setPointerCapture((e as any).pointerId);
     };
@@ -161,9 +162,8 @@ const App = () => {
         activeFires.current.delete(type);
         
         if (gameScreenRef.current) {
-            if (activeFires.current.has('grenade')) gameScreenRef.current.virtualFire = 'grenade';
-            else if (activeFires.current.has('normal')) gameScreenRef.current.virtualFire = 'normal';
-            else gameScreenRef.current.virtualFire = 'none';
+            if (type === 'normal') gameScreenRef.current.virtualFireNormal = false;
+            if (type === 'grenade') gameScreenRef.current.virtualFireGrenade = false;
         }
         
         try {

@@ -23,7 +23,8 @@ export class Tank {
   physicsBody: any;
   velocity: number = 0;
   rotation: number = 0;
-  recoil: number = 0;
+  shellRecoil: number = 0;
+  grenadeRecoil: number = 0;
   turretYaw: number = 0;
   wasFiringInternal: boolean = false;
   currentUp: vec3 = [0, 1, 0];
@@ -79,23 +80,28 @@ export class Tank {
   /**
    * Updates physics and syncs mesh transforms.
    */
-  update(ts: number, moveDir: { x: number, y: number }, fireType: 'none' | 'normal' | 'grenade' = 'none', cameraYaw: number = 0, cameraPitch: number = 0): false | 'normal' | 'grenade' {
+  update(ts: number, moveDir: { x: number, y: number }, fireNormal: boolean, fireGrenade: boolean, cameraYaw: number = 0, cameraPitch: number = 0): { normal: boolean, grenade: boolean } {
     const speed = 15;
     const rotSpeed = 3.5;
 
-    let didShoot: false | 'normal' | 'grenade' = false;
-    if (fireType !== 'none') {
-        if (this.recoil <= 0) {
-            this.recoil = 1.0;
-            didShoot = fireType;
-        }
-        this.wasFiringInternal = true;
-    } else {
-        this.wasFiringInternal = false;
+    let didShootNormal = false;
+    let didShootGrenade = false;
+
+    if (fireNormal && this.shellRecoil <= 0) {
+      this.shellRecoil = 1.0;
+      didShootNormal = true;
     }
 
-    this.recoil -= (ts / 1000) * 5; 
-    if (this.recoil < 0) this.recoil = 0;
+    if (fireGrenade && this.grenadeRecoil <= 0) {
+      this.grenadeRecoil = 1.0;
+      didShootGrenade = true;
+    }
+
+    this.shellRecoil -= (ts / 1000) * 5; 
+    if (this.shellRecoil < 0) this.shellRecoil = 0;
+
+    this.grenadeRecoil -= (ts / 1000) * 2; // Grenades have slower fire rate
+    if (this.grenadeRecoil < 0) this.grenadeRecoil = 0;
     
     // Steering Logic
     this.rotation -= moveDir.x * rotSpeed * (ts / 1000); 
@@ -228,7 +234,7 @@ export class Tank {
     this.turret.setPosition(pos.GetX() + turretOffset[0], pos.GetY() + turretOffset[1], pos.GetZ() + turretOffset[2]);
     this.turret.setQuaternion(turretQ);
 
-    const visualRecoil = this.recoil > 0 ? this.recoil * 0.45 : 0;
+    const visualRecoil = this.shellRecoil > 0 ? this.shellRecoil * 0.45 : 0;
     const barrelRelativePos = barrelQ.rotateVector([0, 0, -1.2 + visualRecoil]);
     const turretPos = this.turret.getPosition();
     this.barrel.setPosition(turretPos[0] + barrelRelativePos[0], turretPos[1] + barrelRelativePos[1], turretPos[2] + barrelRelativePos[2]);
@@ -242,7 +248,7 @@ export class Tank {
     this.antenna.setPosition(turretPos[0] + antennaOffset[0], turretPos[1] + antennaOffset[1], turretPos[2] + antennaOffset[2]);
     this.antenna.setQuaternion(turretQ);
     
-    return didShoot;
+    return { normal: didShootNormal, grenade: didShootGrenade };
   }
   
   /**

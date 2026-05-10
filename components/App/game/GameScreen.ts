@@ -53,7 +53,8 @@ export class GameScreen extends Screen {
   shellMesh: Gfx3Mesh;
   grenadeMesh: Gfx3Mesh;
   moveDir = { x: 0, y: 0 };
-  virtualFire: 'none' | 'normal' | 'grenade' = 'none';
+  virtualFireNormal: boolean = false;
+  virtualFireGrenade: boolean = false;
   wasFiring = false;
   
   cameraYaw = 0; 
@@ -179,28 +180,19 @@ export class GameScreen extends Screen {
     combinedMoveDir.y = Math.max(-1, Math.min(1, combinedMoveDir.y));
 
     const currentFiringInput = inputManager.isActiveAction('FIRE') || (inputManager.isMouseDown() && inputManager.isPointerLockCaptured());
-    let isFiring: 'none' | 'normal' | 'grenade' = 'none';
-    if (this.virtualFire !== 'none') isFiring = this.virtualFire as any;
-    else if (this.rightClickFire) isFiring = 'grenade';
-    else if (currentFiringInput) isFiring = 'normal';
+    const isFiringNormal = this.virtualFireNormal || currentFiringInput;
+    const isFiringGrenade = this.virtualFireGrenade || this.rightClickFire;
 
     this.level.update(ts);
 
     // Spawn Projectiles from Tank
-    const didShoot = this.tank.update(ts, combinedMoveDir, isFiring, this.cameraYaw, this.cameraPitch);
-    if (didShoot) {
-       const bPos = this.tank.barrel.getPosition();
-       const bRot = this.tank.barrel.getQuaternion();
-       const forward = bRot.rotateVector([0, 0, -1]);
-       const spawnPos = [bPos[0] + forward[0] * 2, bPos[1] + forward[1] * 2, bPos[2] + forward[2] * 2] as vec3;
-       this.spawnProjectile(didShoot === 'grenade' ? ProjectileType.GRENADE : ProjectileType.SHELL, spawnPos[0], spawnPos[1], spawnPos[2], bRot, 'player');
-       
-       // Muzzle Flash
-       const exp = this.explosionPool.acquire() as Explosion;
-       if (exp) {
-           exp.reset(spawnPos[0], spawnPos[1], spawnPos[2], didShoot === 'grenade' ? [1.0, 0.5, 0.2] : [1.0, 0.9, 0.3], forward, didShoot === 'grenade' ? 2.5 : 1.5, 'muzzle');
-           this.explosions.push(exp);
-       }
+    const shots = this.tank.update(ts, combinedMoveDir, isFiringNormal, isFiringGrenade, this.cameraYaw, this.cameraPitch);
+    
+    if (shots.normal) {
+       this.handleTankShoot(ProjectileType.SHELL);
+    }
+    if (shots.grenade) {
+       this.handleTankShoot(ProjectileType.GRENADE);
     }
 
     // Update Enemies & Spawn their projectiles
@@ -270,8 +262,9 @@ export class GameScreen extends Screen {
     // Final NaN check before setting
     if (!isNaN(lerpedPos[0]) && !isNaN(lerpedPos[1]) && !isNaN(lerpedPos[2])) {
         let shakeX = 0, shakeY = 0, shakeZ = 0;
-        if (this.tank.recoil > 0) {
-            const mag = this.tank.recoil * 0.4;
+        const totalRecoil = this.tank.shellRecoil + this.tank.grenadeRecoil * 0.5;
+        if (totalRecoil > 0) {
+            const mag = totalRecoil * 0.4;
             shakeX = (Math.random() - 0.5) * mag;
             shakeY = (Math.random() - 0.5) * mag;
             shakeZ = (Math.random() - 0.5) * mag;
@@ -279,6 +272,21 @@ export class GameScreen extends Screen {
 
         this.camera.setPosition(lerpedPos[0] + shakeX, lerpedPos[1] + shakeY, lerpedPos[2] + shakeZ);
         this.camera.lookAt(this.cameraLookTarget[0] + shakeX * 0.5, this.cameraLookTarget[1] + shakeY * 0.5, this.cameraLookTarget[2] + shakeZ * 0.5);
+    }
+  }
+
+  handleTankShoot(type: ProjectileType) {
+    const bPos = this.tank.barrel.getPosition();
+    const bRot = this.tank.barrel.getQuaternion();
+    const forward = bRot.rotateVector([0, 0, -1]);
+    const spawnPos = [bPos[0] + forward[0] * 2, bPos[1] + forward[1] * 2, bPos[2] + forward[2] * 2] as vec3;
+    this.spawnProjectile(type, spawnPos[0], spawnPos[1], spawnPos[2], bRot, 'player');
+    
+    // Muzzle Flash
+    const exp = this.explosionPool.acquire() as Explosion;
+    if (exp) {
+        exp.reset(spawnPos[0], spawnPos[1], spawnPos[2], type === ProjectileType.GRENADE ? [1.0, 0.5, 0.2] : [1.0, 0.9, 0.3], forward, type === ProjectileType.GRENADE ? 2.5 : 1.5, 'muzzle');
+        this.explosions.push(exp);
     }
   }
 
