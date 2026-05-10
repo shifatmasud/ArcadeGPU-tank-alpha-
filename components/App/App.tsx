@@ -311,7 +311,7 @@ const App = () => {
                         lineHeight: 1,
                         letterSpacing: '2px',
                         textShadow: '0 2px 10px rgba(0,0,0,0.5)'
-                    }}>REVELO_S1</h1>
+                    }}>ARCADE_GPU</h1>
                     <div style={{ display: 'flex', gap: Tokens.spacing.sm }}>
                         <StatBlock label="Enemies" value={enemyCount} icon={Crosshair} />
                         {!isMobile && <StatBlock label="System" value="OK" icon={Gear} />}
@@ -414,7 +414,7 @@ const App = () => {
                 color: Tokens.colors.contentDim,
                 letterSpacing: '1px'
             }}>
-                {isDesktop ? 'DESKTOPMODE' : isTablet ? 'TABLETMODE' : 'MOBILEMODE'} // v0.3.0
+                {isDesktop ? 'DESKTOPMODE' : isTablet ? 'TABLETMODE' : 'MOBILEMODE'} // v0.3.1
             </div>
 
             {/* GLOBAL STYLES FIX FOR CANVAS */}

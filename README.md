@@ -1,16 +1,21 @@
-# ArcadeGPU: Tank Command
+# ArcadeGPU: Tank Pursuit v8
 
 **ELI10 TLDR:** Drive your tank, aim the turret with your mouse, and blast enemy cubes with normal bullets or grenades while navigating a 3D pixelated battlefield.
 
 A high-performance 3D Tank Game built with the **ArcadeGPU** engine. This project features real-time Jolt Physics, custom 3D mesh rendering, and a nostalgic arcade aesthetic.
+
+## 🎮 Game Version: v0.3.1
+*   **Engine:** ArcadeGPU v1.0
+*   **Theme:** Retro-Arcade / Cyberpunk
+*   **Performance:** 60FPS Target
 
 ## 🎮 How to Play
 
 ### Controls
 *   **W A S D** - Drive the tank
 *   **MOUSE** - Look around and aim your tank turret
-*   **SPACE / LEFT CLICK** - Shoot normal projectiles
-*   **RIGHT CLICK** - Throw grenade
+*   **SPACE / LEFT CLICK** - Shoot normal projectiles (Thermal Rounds)
+*   **SHIFT / RIGHT CLICK** - Throw grenade (Plasma Charges)
 *   **Virtual Joystick / Buttons** - On-screen controls for mobile players
 
 ## 📁 Directory Structure
@@ -45,3 +50,6 @@ A high-performance 3D Tank Game built with the **ArcadeGPU** engine. This projec
 1.  Ensure all dependencies are installed via `npm install`.
 2.  Run the development server with `npm run dev`.
 3.  Navigate to `localhost:3000` to play.
+
+---
+*Cleaned up /Encrypted directory and updated title references to ARCADE_GPU.*
