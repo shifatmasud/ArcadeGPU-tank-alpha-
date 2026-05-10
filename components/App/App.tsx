@@ -5,243 +5,428 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { em } from '@lib/engine/engine_manager';
 import { screenManager } from '@lib/screen/screen_manager';
-import { Screen } from '@lib/screen/screen';
 import { gfx3Manager } from '@lib/gfx3/gfx3_manager';
-import { gfx3MeshRenderer } from '@lib/gfx3_mesh/gfx3_mesh_renderer';
-import { gfx3PostRenderer, PostParam } from '@lib/gfx3_post/gfx3_post_renderer';
-import { gfx3JoltManager, JOLT_LAYER_MOVING, JOLT_RVEC3_TO_VEC3, VEC3_TO_JOLT_RVEC3, Gfx3Jolt } from '@lib/gfx3_jolt/gfx3_jolt_manager';
-import { Gfx3Camera } from '@lib/gfx3_camera/gfx3_camera';
-import { Gfx3Mesh } from '@lib/gfx3_mesh/gfx3_mesh';
-import { Quaternion } from '@lib/core/quaternion';
-import { UT } from '@lib/core/utils';
-import { eventManager } from '@lib/core/event_manager';
-import { Gfx3Drawable, Gfx3MeshEffect } from '@lib/gfx3/gfx3_drawable';
-import { inputManager } from '@lib/input/input_manager';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Bomb } from 'lucide-react';
-import { Tank } from './game/Tank';
-import { Environment } from './game/Environment';
-import { Enemy } from './game/Enemy';
-import { Explosion } from './game/Explosion';
-import { createBoxMesh } from './game/GameUtils';
-
-// --- SCREEN ---
-
+import { 
+    Crosshair, 
+    Fire, 
+    ArrowsOut, 
+    Monitor, 
+    DeviceMobile, 
+    Gear,
+    Info,
+    BoundingBox
+} from 'phosphor-react';
 import { GameScreen } from './game/GameScreen';
+
+// --- DESIGN TOKENS ---
+const Tokens = {
+    colors: {
+        surface: 'rgba(0, 0, 0, 0.4)',
+        surfaceLight: 'rgba(255, 255, 255, 0.05)',
+        border: 'rgba(255, 255, 255, 0.1)',
+        content: '#FFFFFF',
+        contentDim: 'rgba(255, 255, 255, 0.5)',
+        accent: '#FF3E3E',
+        accentLight: 'rgba(255, 62, 62, 0.2)',
+    },
+    fonts: {
+        hero: '"Bebas Neue", sans-serif',
+        body: '"Inter", sans-serif',
+        data: '"JetBrains Mono", monospace',
+    },
+    spacing: {
+        xs: '4px',
+        sm: '8px',
+        md: '16px',
+        lg: '24px',
+        xl: '32px',
+    },
+    radius: {
+        sm: '4px',
+        md: '8px',
+        lg: '16px',
+        full: '9999px',
+    }
+};
+
+// --- HOOKS ---
+const useWindowSize = () => {
+    const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+    useEffect(() => {
+        const handleResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    return size;
+};
 
 // --- UI COMPONENTS ---
 
-const Joystick = ({ onChange }: { onChange: (dir: { x: number, y: number }) => void }) => {
-    const [dragging, setDragging] = useState(false);
-    const [pos, setPos] = useState({ x: 0, y: 0 });
-    const containerRef = useRef<HTMLDivElement>(null);
+const StatBlock = ({ label, value, icon: Icon }: { label: string, value: string | number, icon?: any }) => (
+    <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: Tokens.spacing.xs,
+        backgroundColor: Tokens.colors.surface,
+        padding: `${Tokens.spacing.sm} ${Tokens.spacing.md}`,
+        border: `1px solid ${Tokens.colors.border}`,
+        borderRadius: Tokens.radius.md,
+        backdropFilter: 'blur(10px)',
+        minWidth: '80px',
+    }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {Icon && <Icon size={12} color={Tokens.colors.contentDim} />}
+            <span style={{ 
+                color: Tokens.colors.contentDim, 
+                fontSize: '10px', 
+                fontFamily: Tokens.fonts.body, 
+                textTransform: 'uppercase', 
+                letterSpacing: '1px' 
+            }}>{label}</span>
+        </div>
+        <span style={{ 
+            color: Tokens.colors.content, 
+            fontSize: '18px', 
+            fontFamily: Tokens.fonts.data, 
+            fontWeight: 600 
+        }}>{value}</span>
+    </div>
+);
 
-    const handlePointerDown = (e: React.PointerEvent) => {
-        if (e.cancelable) e.preventDefault();
-        e.stopPropagation();
-        if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
-            e.nativeEvent.stopImmediatePropagation();
-        }
-        setDragging(true);
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    };
+const ActionButton = ({ icon: Icon, onClick, color = Tokens.colors.surface, onDown, onUp, size = 64 }: any) => (
+    <motion.button
+        whileTap={{ scale: 0.9, backgroundColor: Tokens.colors.accent }}
+        onPointerDown={onDown}
+        onPointerUp={onUp}
+        onPointerLeave={onUp}
+        style={{
+            width: size,
+            height: size,
+            borderRadius: Tokens.radius.full,
+            backgroundColor: color,
+            border: `1px solid ${Tokens.colors.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: Tokens.colors.content,
+            backdropFilter: 'blur(10px)',
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+            pointerEvents: 'auto',
+            position: 'relative',
+        }}
+    >
+        <Icon size={size * 0.5} weight="bold" />
+        <div style={{ position: 'absolute', inset: '-8px', borderRadius: Tokens.radius.full }} />
+    </motion.button>
+);
+
+const Joystick = ({ onChange }: { onChange: (dir: { x: number, y: number }) => void }) => {
+    const [pos, setPos] = useState({ x: 0, y: 0 });
+    const [dragging, setDragging] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const handlePointerMove = (e: React.PointerEvent) => {
         if (!dragging || !containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
-        
         let dx = e.clientX - centerX;
         let dy = e.clientY - centerY;
-        
-        const dist = Math.sqrt(dx * dx + dy * dy);
         const maxDist = rect.width / 2;
-        
-        if (dist > maxDist) {
-            dx = (dx / dist) * maxDist;
-            dy = (dy / dist) * maxDist;
-        }
-        
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > maxDist) { dx *= maxDist / dist; dy *= maxDist / dist; }
         setPos({ x: dx, y: dy });
         onChange({ x: dx / maxDist, y: dy / maxDist });
-    };
-
-    const handlePointerUp = () => {
-        setDragging(false);
-        setPos({ x: 0, y: 0 });
-        onChange({ x: 0, y: 0 });
     };
 
     return (
         <div 
             ref={containerRef}
-            className="w-32 h-32 rounded-full border-4 border-white/20 bg-white/5 flex items-center justify-center relative touch-none"
-            onPointerDown={handlePointerDown}
+            style={{
+                width: 140,
+                height: 140,
+                borderRadius: Tokens.radius.full,
+                background: Tokens.colors.surface,
+                border: `1px solid ${Tokens.colors.border}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                touchNone: 'none',
+                pointerEvents: 'auto',
+            }}
+            onPointerDown={(e) => {
+                setDragging(true);
+                (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            }}
             onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
+            onPointerUp={() => { setDragging(false); setPos({ x: 0, y: 0 }); onChange({ x: 0, y: 0 }); }}
         >
             <motion.div 
-                className="w-12 h-12 rounded-full bg-white shadow-xl pointer-events-none"
                 animate={{ x: pos.x, y: pos.y }}
-                transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: Tokens.radius.full,
+                    backgroundColor: Tokens.colors.content,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                }}
             />
         </div>
     );
 };
 
-// --- APP COMPONENT ---
+// --- MAIN APP ---
 
 const App = () => {
     const [isReady, setIsReady] = useState(false);
+    const [enemyCount, setEnemyCount] = useState(3);
     const gameScreenRef = useRef<GameScreen | null>(null);
+    const { width } = useWindowSize();
+    
+    const isMobile = width < 600;
+    const isTablet = width >= 600 && width < 1024;
+    const isDesktop = width >= 1024;
 
     useEffect(() => {
-        const handleContextMenu = (e: MouseEvent) => {
-            e.preventDefault();
-        };
+        const handleContextMenu = (e: MouseEvent) => e.preventDefault();
         document.addEventListener('contextmenu', handleContextMenu);
 
         const init = async () => {
-            // Give a moment for the DOM to settle
             await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Initialization is handled by singleton imports, 
-            // but we need to wait for Jolt and WebGPU.
-            // gfx3Manager initializes itself on import, but we need to make sure the loop starts.
-            
             const screen = new GameScreen();
             gameScreenRef.current = screen;
             screenManager.requestSetScreen(screen);
-            
             await screen.onEnter();
-            
             em.startup(false);
             setIsReady(true);
         };
-
         init();
+
+        const interval = setInterval(() => {
+            if (gameScreenRef.current) {
+                const count = gameScreenRef.current.enemies.filter(e => e.hp > 0).length;
+                setEnemyCount(count);
+            }
+        }, 500);
 
         return () => {
             document.removeEventListener('contextmenu', handleContextMenu);
+            clearInterval(interval);
             em.pause();
         };
     }, []);
 
-    const handleJoystickChange = (dir: { x: number, y: number }) => {
-        if (gameScreenRef.current) {
-            gameScreenRef.current.moveDir = dir;
-        }
-    };
-
-    const activeFires = useRef<Set<string>>(new Set());
-
-    const handleFireDown = (e: React.PointerEvent | React.MouseEvent | React.TouchEvent, type: 'normal' | 'grenade') => {
+    const handleFire = (type: 'normal' | 'grenade', active: boolean, e: any) => {
         if (e.cancelable) e.preventDefault();
-        e.stopPropagation();
-        if ((e as any).nativeEvent && (e as any).nativeEvent.stopImmediatePropagation) {
-            (e as any).nativeEvent.stopImmediatePropagation();
-        }
-        
-        activeFires.current.add(type);
         if (gameScreenRef.current) {
-            if (type === 'normal') gameScreenRef.current.virtualFireNormal = true;
-            if (type === 'grenade') gameScreenRef.current.virtualFireGrenade = true;
+            if (type === 'normal') gameScreenRef.current.virtualFireNormal = active;
+            else gameScreenRef.current.virtualFireGrenade = active;
         }
-        (e.target as HTMLElement).setPointerCapture((e as any).pointerId);
-    };
-
-    const handleFireUp = (e: React.PointerEvent | React.MouseEvent | React.TouchEvent, type: 'normal' | 'grenade') => {
-        if (e.cancelable) e.preventDefault();
-        e.stopPropagation();
-        if ((e as any).nativeEvent && (e as any).nativeEvent.stopImmediatePropagation) {
-            (e as any).nativeEvent.stopImmediatePropagation();
-        }
-        
-        activeFires.current.delete(type);
-        
-        if (gameScreenRef.current) {
-            if (type === 'normal') gameScreenRef.current.virtualFireNormal = false;
-            if (type === 'grenade') gameScreenRef.current.virtualFireGrenade = false;
-        }
-        
-        try {
-            (e.target as HTMLElement).releasePointerCapture((e as any).pointerId);
-        } catch (err) {}
+        if (active) (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
 
     return (
-        <div className="fixed inset-0 w-full h-full pointer-events-none flex flex-col justify-end p-8 overflow-hidden font-sans">
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontFamily: Tokens.fonts.body,
+        }}>
             <AnimatePresence>
                 {!isReady && (
                     <motion.div 
                         initial={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-slate-900 flex items-center justify-center z-50 pointer-events-auto"
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            backgroundColor: '#0A0A0A',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 100,
+                            pointerEvents: 'auto',
+                        }}
                     >
-                        <div className="text-white text-2xl font-bebas tracking-widest animate-pulse">
-                            INITIALIZING ARCADEGPU...
+                        <motion.div
+                            animate={{ opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                            style={{
+                                fontSize: '24px',
+                                fontFamily: Tokens.fonts.hero,
+                                color: Tokens.colors.content,
+                                letterSpacing: '4px',
+                            }}
+                        >
+                            ARCADEGPU_INIT
+                        </motion.div>
+                        <div style={{ 
+                            width: '200px', 
+                            height: '2px', 
+                            background: Tokens.colors.border, 
+                            marginTop: '16px',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            <motion.div 
+                                animate={{ x: [-200, 200] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                                style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    width: '100px',
+                                    background: Tokens.colors.accent
+                                }}
+                            />
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            <div className="absolute top-8 left-8 pointer-events-auto">
-                <h1 className="text-4xl font-bebas text-white drop-shadow-lg tracking-wider">TANK COMMAND</h1>
-                <div className="bg-black/20 backdrop-blur-sm p-3 rounded-lg border border-white/5 mt-2">
-                    <p className="text-white/80 text-xs font-bold uppercase tracking-tighter mb-1">Controls</p>
-                    <p className="text-white/60 text-[11px] font-mono leading-tight">WASD • MOVE TANK</p>
-                    <p className="text-white/60 text-[11px] font-mono leading-tight">MOUSE • LOOK AROUND</p>
-                    <p className="text-white/60 text-[11px] font-mono leading-tight">SPACE • FIRE</p>
-                    <p className="text-white/60 text-[11px] font-mono leading-tight">L CLICK • FIRE | R CLICK • GRENADE</p>
-                </div>
-            </div>
-            
-            <div className="fixed inset-0 pointer-events-none flex items-center justify-center">
-               <div className="w-1 h-1 bg-white rounded-full opacity-50 mix-blend-difference"></div>
-            </div>
-
-            <div className="pointer-events-auto flex justify-between items-end w-full pb-8">
-                <Joystick onChange={handleJoystickChange} />
-                
-                <div className="flex flex-col items-end gap-2">
-                    <div className="flex gap-4 items-end">
-                        <motion.button 
-                            whileTap={{ scale: 0.85 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                            onPointerDown={(e) => handleFireDown(e, 'grenade')}
-                            onPointerUp={(e) => handleFireUp(e, 'grenade')}
-                            onPointerLeave={(e) => handleFireUp(e, 'grenade')}
-                            onPointerMove={(e) => { e.stopPropagation(); if (e.nativeEvent?.stopImmediatePropagation) e.nativeEvent.stopImmediatePropagation(); }}
-                            onContextMenu={(e) => e.preventDefault()}
-                            className="w-16 h-16 rounded-full bg-orange-500 shadow-[0_4px_15px_rgba(249,115,22,0.6)] border-[4px] border-orange-700/50 flex items-center justify-center text-white bg-gradient-to-tr from-orange-700 to-orange-400 z-50 pointer-events-auto select-none touch-none shrink-0 mb-4 relative"
-                        >
-                            <Bomb size={28} />
-                            {/* Make tap area slightly larger */}
-                            <div className="absolute -inset-4 rounded-full pointer-events-auto z-10" />
-                        </motion.button>
-                        <motion.button 
-                            whileTap={{ scale: 0.85 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                            onPointerDown={(e) => handleFireDown(e, 'normal')}
-                            onPointerUp={(e) => handleFireUp(e, 'normal')}
-                            onPointerLeave={(e) => handleFireUp(e, 'normal')}
-                            onPointerMove={(e) => { e.stopPropagation(); if (e.nativeEvent?.stopImmediatePropagation) e.nativeEvent.stopImmediatePropagation(); }}
-                            onContextMenu={(e) => e.preventDefault()}
-                            className="w-24 h-24 rounded-[30px] bg-red-600 shadow-[0_8px_25px_rgba(220,38,38,0.6)] border-[6px] border-red-800/50 flex items-center justify-center text-white bg-gradient-to-tr from-red-800 to-red-500 z-50 pointer-events-auto select-none touch-none shrink-0 relative"
-                        >
-                            <Target size={40} className="drop-shadow-lg" />
-                            <div className="absolute -inset-4 rounded-[40px] pointer-events-auto z-10" />
-                        </motion.button>
+            {/* TOP BAR */}
+            <div style={{
+                position: 'absolute',
+                top: Tokens.spacing.lg,
+                left: Tokens.spacing.lg,
+                right: Tokens.spacing.lg,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+            }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: Tokens.spacing.sm }}>
+                    <h1 style={{
+                        margin: 0,
+                        fontSize: isMobile ? '32px' : '48px',
+                        fontFamily: Tokens.fonts.hero,
+                        color: Tokens.colors.content,
+                        lineHeight: 1,
+                        letterSpacing: '2px',
+                        textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+                    }}>REVELO_S1</h1>
+                    <div style={{ display: 'flex', gap: Tokens.spacing.sm }}>
+                        <StatBlock label="Enemies" value={enemyCount} icon={Crosshair} />
+                        {!isMobile && <StatBlock label="System" value="OK" icon={Gear} />}
                     </div>
-                    <div className="text-white/40 text-xs font-mono uppercase mt-4">Version 0.2.1-Alpha</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: Tokens.spacing.sm, pointerEvents: 'auto' }}>
+                    {isDesktop && (
+                        <div style={{
+                            backgroundColor: Tokens.colors.surface,
+                            padding: Tokens.spacing.md,
+                            borderRadius: Tokens.radius.md,
+                            border: `1px solid ${Tokens.colors.border}`,
+                            fontSize: '10px',
+                            fontFamily: Tokens.fonts.data,
+                            color: Tokens.colors.contentDim,
+                            textAlign: 'right'
+                        }}>
+                            [SPACE] SHOOT<br />
+                            [SHIFT] GRENADE<br />
+                            [WASD] NAVIGATE
+                        </div>
+                    )}
+                    <ActionButton icon={Info} size={40} />
                 </div>
             </div>
 
+            {/* RETICLE */}
+            <div style={{
+                position: 'fixed',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+            }}>
+                <div style={{
+                    width: '24px',
+                    height: '24px',
+                    border: `1px solid ${Tokens.colors.content}`,
+                    borderRadius: '2px',
+                    opacity: 0.3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <div style={{ width: '2px', height: '2px', backgroundColor: Tokens.colors.content }} />
+                </div>
+            </div>
+
+            {/* BOTTOM CONTROLS */}
+            <div style={{
+                position: 'absolute',
+                bottom: Tokens.spacing.lg,
+                left: Tokens.spacing.lg,
+                right: Tokens.spacing.lg,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+            }}>
+                {/* Movement */}
+                <div style={{ pointerEvents: 'auto' }}>
+                    {(isMobile || isTablet) && (
+                        <Joystick onChange={(dir) => { if (gameScreenRef.current) gameScreenRef.current.moveDir = dir; }} />
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: Tokens.spacing.md,
+                    pointerEvents: 'auto',
+                }}>
+                    <div style={{ display: 'flex', gap: Tokens.spacing.md }}>
+                        <ActionButton 
+                            icon={Fire} 
+                            size={isMobile ? 64 : 80}
+                            onDown={(e: any) => handleFire('grenade', true, e)}
+                            onUp={(e: any) => handleFire('grenade', false, e)}
+                        />
+                        <ActionButton 
+                            icon={Crosshair} 
+                            size={isMobile ? 80 : 100}
+                            color={Tokens.colors.surfaceLight}
+                            onDown={(e: any) => handleFire('normal', true, e)}
+                            onUp={(e: any) => handleFire('normal', false, e)}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div style={{
+                position: 'absolute',
+                bottom: '12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: '10px',
+                fontFamily: Tokens.fonts.data,
+                color: Tokens.colors.contentDim,
+                letterSpacing: '1px'
+            }}>
+                {isDesktop ? 'DESKTOPMODE' : isTablet ? 'TABLETMODE' : 'MOBILEMODE'} // v0.3.0
+            </div>
+
+            {/* GLOBAL STYLES FIX FOR CANVAS */}
             <style>{`
                 canvas {
                     image-rendering: auto;
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                * {
+                    user-select: none;
+                    -webkit-tap-highlight-color: transparent;
                 }
             `}</style>
         </div>

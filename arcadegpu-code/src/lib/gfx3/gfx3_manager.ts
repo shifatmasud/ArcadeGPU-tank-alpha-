@@ -76,7 +76,7 @@ class Gfx3Manager {
       throw new Error('Gfx3Manager::Gfx3Manager: WebGPU cannot be initialized - navigator.gpu not found');
     }
 
-    if (!this.adapter.requestDevice) {
+    if (!this.adapter || typeof this.adapter.requestDevice !== 'function') {
       this.adapter = (await navigator.gpu.requestAdapter({
         powerPreference: 'high-performance'
       }))!;
@@ -90,13 +90,17 @@ class Gfx3Manager {
 
     if (!this.adapter) {
       UT.FAIL('This browser appears to support WebGPU but no adapter was found');
-      throw new Error('Gfx3Manager::Gfx3Manager: WebGPU cannot be initialized - Adapter not found');
+      throw new Error('Gfx3Manager::initialize: WebGPU cannot be initialized - Adapter not found');
     }
 
-    if (!this.device.pushErrorScope) {
+    const isRealDevice = this.device && typeof this.device.pushErrorScope === 'function';
+    if (!isRealDevice) {
       this.device = await this.adapter.requestDevice();
-      this.device.lost.then(() => {
-        throw new Error('Gfx3Manager::Gfx3Manager: WebGPU cannot be initialized - Device has been lost');
+      this.device.lost.then((info) => {
+        console.error('Gfx3Manager: WebGPU Device lost!', info.message, info.reason);
+        // We don't throw hero to avoid crashing the app immediately if it's a transient loss
+        // But we should probably mark it for re-initialization
+        this.device = {} as GPUDevice; 
       });
     }
 
