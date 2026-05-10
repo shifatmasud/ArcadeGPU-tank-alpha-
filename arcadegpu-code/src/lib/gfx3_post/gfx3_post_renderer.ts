@@ -125,9 +125,6 @@ class Gfx3PostRenderer extends Gfx3RendererAbstract {
    * The render function.
    */
   render(ts: number, destinationTexture: Gfx3RenderingTexture): void {
-    if (!destinationTexture || !destinationTexture.gpuTextureView) {
-      return;
-    }
     const currentView = gfx3Manager.getCurrentView();
     const commandEncoder = gfx3Manager.getCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass({

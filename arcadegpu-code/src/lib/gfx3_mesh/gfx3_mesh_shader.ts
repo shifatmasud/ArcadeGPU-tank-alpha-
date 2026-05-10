@@ -294,7 +294,6 @@ ${STRUCT_DIR_LIGHT}
 @group(0) @binding(1) var<uniform> LVP_MATRIX: mat4x4<f32>;
 @group(0) @binding(2) var<uniform> DIR_LIGHT: DirLight;
 @group(0) @binding(3) var<uniform> POINT_LIGHTS: array<PointLight, ${MAX_POINT_LIGHTS}>;
-@group(0) @binding(15) var<storage, read> MATRIX_POOL: array<MeshInfos>;
 @group(1) @binding(0) var<uniform> MESH_INFOS: MeshInfos;
 @group(2) @binding(1) var<uniform> MAT_PARAMS: MaterialParams;
 @group(2) @binding(4) var<uniform> MAT_JAM_INFOS: MaterialJamInfos;
@@ -302,7 +301,6 @@ ${STRUCT_DIR_LIGHT}
 
 @vertex
 fn main(
-  @builtin(instance_index) instanceIndex: u32,
   @builtin(vertex_index) vertexIndex: u32,
   @location(0) Position: vec4<f32>,
   @location(1) TexUV: vec2<f32>,
@@ -311,13 +309,6 @@ fn main(
   @location(4) Tangent: vec3<f32>,
   @location(5) Binormal: vec3<f32>
 ) -> VertexOutput {
-  var meshInfos: MeshInfos;
-  if (SCENE_INFOS.SCENE_S00 == 1.0) {
-    meshInfos = MATRIX_POOL[u32(MESH_INFOS.TAGS.w) + instanceIndex];
-  } else {
-    meshInfos = MESH_INFOS;
-  }
-
   var position = Position;
   var texUV = TexUV;
   var color = Color;
@@ -391,14 +382,14 @@ fn main(
     binormal.z = mix(baz, bbz, interpolationFactor);
   }
 
-  var posFromLight = LVP_MATRIX * meshInfos.M_MATRIX * position;
+  var posFromLight = LVP_MATRIX * MESH_INFOS.M_MATRIX * position;
   var gauraudColor = vec3<f32>(SCENE_INFOS.AMBIENT_COLOR_R, SCENE_INFOS.AMBIENT_COLOR_G, SCENE_INFOS.AMBIENT_COLOR_B);
-  var worldPos = vec4(meshInfos.M_MATRIX * position).xyz;
+  var worldPos = vec4(MESH_INFOS.M_MATRIX * position).xyz;
 
   if (MAT_PARAMS.GOURAUD_SHADING_ENABLED == 1.0)
   {
     if (DIR_LIGHT.ENABLED == 1.0 && (DIR_LIGHT.GROUP == 0.0 || DIR_LIGHT.GROUP == MAT_PARAMS.LIGHT_GROUP)) {
-      let n = normalize(meshInfos.NORM_MATRIX * normal);
+      let n = normalize(MESH_INFOS.NORM_MATRIX * normal);
       let l = normalize(-DIR_LIGHT.DIR);
       let diffuseFactor = max(dot(n, l), 0.0);
       gauraudColor += diffuseFactor * DIR_LIGHT.DIFFUSE * DIR_LIGHT.INTENSITY;
@@ -408,7 +399,7 @@ fn main(
     {
       if (POINT_LIGHTS[i].GROUP == 0.0 || POINT_LIGHTS[i].GROUP == MAT_PARAMS.LIGHT_GROUP)
       {
-        let n = normalize(meshInfos.NORM_MATRIX * normal);
+        let n = normalize(MESH_INFOS.NORM_MATRIX * normal);
         let l = normalize(POINT_LIGHTS[i].POSITION - worldPos.xyz);      
         let diffuseFactor = max(dot(n, l), 0.0);
 
@@ -419,14 +410,15 @@ fn main(
     }
   }
 
+  ${data.VERT_BEGIN}
   var output: VertexOutput;
-  output.Position = meshInfos.MVPC_MATRIX * position;
+  output.Position = MESH_INFOS.MVPC_MATRIX * position;
   output.FragPos = worldPos.xyz;
   output.FragUV = texUV;
   output.FragColor = color;
-  output.FragNormal = meshInfos.NORM_MATRIX * normal;
-  output.FragTangent = meshInfos.NORM_MATRIX * tangent;
-  output.FragBinormal = meshInfos.NORM_MATRIX * binormal;
+  output.FragNormal = MESH_INFOS.NORM_MATRIX * normal;
+  output.FragTangent = MESH_INFOS.NORM_MATRIX * tangent;
+  output.FragBinormal = MESH_INFOS.NORM_MATRIX * binormal;
   output.FragShadowPos = vec3(posFromLight.xy * vec2(0.5, -0.5) + vec2(0.5), posFromLight.z); // Convert XY to (0, 1) and Y is flipped because texture coords are Y-down.
   output.FragGouraudColor = gauraudColor;
 

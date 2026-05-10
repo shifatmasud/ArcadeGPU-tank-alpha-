@@ -45,8 +45,3 @@ A high-performance 3D Tank Game built with the **ArcadeGPU** engine. This projec
 1.  Ensure all dependencies are installed via `npm install`.
 2.  Run the development server with `npm run dev`.
 3.  Navigate to `localhost:3000` to play.
-
-## 🆕 Recent Updates
-- **Visuals**: Updated 3D background color to a reddish tint (0.8, 0.2, 0.2, 1.0).
-- **Stability**: Fixed a critical crash in `ObjectPool` where disposing of an already-removed object caused a full-system halt.
-- **Diagnostics**: Added comprehensive console logging across the asset loader and render pipeline to identify black-screen issues on high-load scenarios.

@@ -8,11 +8,6 @@ import { Gfx3StaticGroup, Gfx3DynamicGroup } from '../gfx3/gfx3_group';
 import { Gfx3Mesh } from './gfx3_mesh';
 import { PIPELINE_DESC, VERTEX_SHADER, FRAGMENT_SHADER, MAX_POINT_LIGHTS, MAX_SPOT_LIGHTS, MAX_DECALS, MAT_PARAMS_VARS, SCENE_PARAMS_VARS, SHADER_INSERTS } from './gfx3_mesh_shader';
 
-const MAX_POINT_LIGHTS = 8;
-const MAX_SPOT_LIGHTS = 16;
-const MAX_DECALS = 32;
-const MAX_INSTANCES_TOTAL = 2048;
-
 interface MeshCommand {
   mesh: Gfx3Mesh;
   matrix: mat4;
@@ -25,7 +20,6 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
   shadowEnabled: boolean;
   textureChanged: boolean;
   meshCommands: Array<MeshCommand>;
-  instancedMeshCommands: Map<Gfx3Mesh, Array<mat4>>;
   grp0: Gfx3StaticGroup;
   sceneInfos: Float32Array;
   lvpMatrix: Float32Array;
@@ -38,7 +32,6 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
   shadowMap: Gfx3Texture;
   s0Texture: Gfx3Texture;
   s1Texture: Gfx3Texture;
-  matrixPool: Float32Array;
   grp1: Gfx3DynamicGroup;
   meshInfos: Float32Array;
 
@@ -47,9 +40,8 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
     this.shadowEnabled = false;
     this.textureChanged = false;
     this.meshCommands = [];
-    this.instancedMeshCommands = new Map();
 
-    this.grp0 = gfx3Manager.createStaticGroup('MESH_PIPELINE', 0, GPUBufferUsage.STORAGE | GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+    this.grp0 = gfx3Manager.createStaticGroup('MESH_PIPELINE', 0);
     this.sceneInfos = this.grp0.setFloat(0, 'SCENE_INFOS', 27);
     this.sceneInfos[3] = 0.5;
     this.sceneInfos[4] = 0.5;
@@ -69,7 +61,6 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
     this.s0Texture = this.grp0.setSampler(12, 'S0_SAMPLER', this.s0Texture);
     this.s1Texture = this.grp0.setTexture(13, 'S1_TEXTURE', gfx3Manager.createTextureFromBitmap());
     this.s1Texture = this.grp0.setSampler(14, 'S1_SAMPLER', this.s1Texture);
-    this.matrixPool = this.grp0.setStorageFloat(15, 'MATRIX_POOL', 48 * MAX_INSTANCES_TOTAL);
 
     this.grp1 = gfx3Manager.createDynamicGroup('MESH_PIPELINE', 1);
     this.meshInfos = this.grp1.setFloat(0, 'MESH_MATRICES', 48);
@@ -104,18 +95,9 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
       this.textureChanged = false;
     }
 
-    // Fill Matrix Pool
-    let poolIndex = 0;
-    for (const [mesh, matrices] of this.instancedMeshCommands) {
-      const vpc = mesh.billboard ? bpcMatrix : vpcMatrix;
-      const count = Math.min(matrices.length, MAX_INSTANCES_TOTAL - poolIndex);
-      // Store the start index in the first matrix command's tags.w later, 
-      // but here we just fill the pool.
-      for (let i = 0; i < count; i++) {
-        const meshData = BUILD_MESH_INFOS(vpc, matrices[i], mesh.getTag(), new Float32Array(48));
-        this.matrixPool.set(meshData, poolIndex * 48);
-        poolIndex++;
-      }
+    // @ts-ignore
+    if (window.frameCount % 300 === 0) {
+      console.log(`Gfx3MeshRenderer::render: TIME=${this.sceneInfos[10]}, MESHC= ${this.meshCommands.length}`);
     }
 
     this.grp0.beginWrite();
@@ -126,28 +108,19 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
     this.grp0.write(4, this.spotLights);
     this.grp0.write(5, this.decals);
     this.grp0.write(6, this.fog);
-    this.grp0.writeStorage(15, this.matrixPool);
     this.grp0.endWrite();
     passEncoder.setBindGroup(0, this.grp0.getBindGroup());
 
-    const totalDraws = this.meshCommands.length + this.instancedMeshCommands.size;
-    if (this.grp1.getSize() < totalDraws) {
-      this.grp1.allocate(totalDraws);
+    if (this.grp1.getSize() < this.meshCommands.length) {
+      this.grp1.allocate(this.meshCommands.length);
     }
 
     this.grp1.beginWrite();
-    let dynamicIndex = 0;
-
-    // Normal Draws
-    this.sceneInfos[11] = 0.0; // SCENE_S00 = 0
-    this.grp0.beginWrite();
-    this.grp0.write(0, this.sceneInfos);
-    this.grp0.endWrite();
 
     for (let i = 0; i < this.meshCommands.length; i++) {
       const command = this.meshCommands[i];
       this.grp1.write(0, BUILD_MESH_INFOS(command.mesh.billboard ? bpcMatrix : vpcMatrix, command.matrix, command.mesh.getTag(), this.meshInfos) as Float32Array);
-      passEncoder.setBindGroup(1, this.grp1.getBindGroup(dynamicIndex));
+      passEncoder.setBindGroup(1, this.grp1.getBindGroup(i));
 
       const grp2 = command.mesh.mat.getGroup02();
       const grp3 = command.mesh.mat.getGroup03();
@@ -156,37 +129,6 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
 
       passEncoder.setVertexBuffer(0, gfx3Manager.getVertexBuffer(), command.mesh.getVertexSubBufferOffset(), command.mesh.getVertexSubBufferSize());
       passEncoder.draw(command.mesh.getVertexCount());
-      dynamicIndex++;
-    }
-
-    // Instanced Draws
-    this.sceneInfos[11] = 1.0; // SCENE_S00 = 1
-    this.grp0.beginWrite();
-    this.grp0.write(0, this.sceneInfos);
-    this.grp0.endWrite();
-
-    let currentPoolOffset = 0;
-    for (const [mesh, matrices] of this.instancedMeshCommands) {
-      const count = Math.min(matrices.length, MAX_INSTANCES_TOTAL - currentPoolOffset);
-      const vpc = mesh.billboard ? bpcMatrix : vpcMatrix;
-      
-      const tags = mesh.getTag();
-      tags[3] = currentPoolOffset; // Use W for start index
-      
-      // We need a dummy matrix for M_MATRIX because it's not used in instanced mode but needed for the uniform binding
-      this.grp1.write(0, BUILD_MESH_INFOS(vpc, UT.MAT4_IDENTITY(), tags, this.meshInfos) as Float32Array);
-      passEncoder.setBindGroup(1, this.grp1.getBindGroup(dynamicIndex));
-
-      const grp2 = mesh.mat.getGroup02();
-      const grp3 = mesh.mat.getGroup03();
-      passEncoder.setBindGroup(2, grp2.getBindGroup());
-      passEncoder.setBindGroup(3, grp3.getBindGroup());
-
-      passEncoder.setVertexBuffer(0, gfx3Manager.getVertexBuffer(), mesh.getVertexSubBufferOffset(), mesh.getVertexSubBufferSize());
-      passEncoder.draw(mesh.getVertexCount(), count);
-      
-      currentPoolOffset += count;
-      dynamicIndex++;
     }
 
     this.grp1.endWrite();
@@ -199,7 +141,6 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
     this.sceneInfos[8] = 0;
     this.decals.fill(0);
     this.meshCommands = [];
-    this.instancedMeshCommands.clear();
 
     if (destinationTexture) {
       passEncoder.end();
@@ -306,23 +247,6 @@ class Gfx3MeshRenderer extends Gfx3RendererAbstract {
 
     if (this.shadowEnabled && mesh.getShadowCasting()) {
       gfx3MeshShadowRenderer.drawMesh(mesh, meshMatrix);
-    }
-  }
-
-  /**
-   * Draw an instanced mesh.
-   * 
-   * @param {Gfx3Mesh} mesh - The mesh.
-   * @param {mat4} matrix - The transformation matrix.
-   */
-  drawInstancedMesh(mesh: Gfx3Mesh, matrix: mat4): void {
-    if (!this.instancedMeshCommands.has(mesh)) {
-      this.instancedMeshCommands.set(mesh, []);
-    }
-    this.instancedMeshCommands.get(mesh)!.push(matrix);
-
-    if (this.shadowEnabled && mesh.getShadowCasting()) {
-      gfx3MeshShadowRenderer.drawMesh(mesh, matrix);
     }
   }
 

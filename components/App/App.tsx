@@ -29,62 +29,7 @@ import { createBoxMesh } from './game/GameUtils';
 
 import { GameScreen } from './game/GameScreen';
 
-import { Preloader } from './game/Preloader';
-
 // --- UI COMPONENTS ---
-
-const LoadingScreen = ({ progress }: { progress: number }) => {
-    return (
-        <motion.div 
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center z-50 pointer-events-auto"
-        >
-            <div className="relative w-full max-w-sm px-8">
-                <div className="flex justify-between items-end mb-2">
-                    <div className="flex flex-col">
-                        <span className="text-white/40 text-[10px] font-mono tracking-widest uppercase">System Core</span>
-                        <span className="text-white text-2xl font-bebas tracking-widest">LOADING ASSETS</span>
-                    </div>
-                    <span className="text-white font-mono text-xl">{Math.round(progress)}%</span>
-                </div>
-                
-                <div className="w-full h-[6px] bg-white/10 rounded-full overflow-hidden relative border border-white/5">
-                    <motion.div 
-                        className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                        transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                    />
-                    <motion.div 
-                        className="absolute top-0 bottom-0 w-24 bg-white/30 blur-md"
-                        animate={{ left: ['-20%', '120%'] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                    />
-                </div>
-                
-                <div className="mt-6 flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                        <span className="text-white/30 text-[9px] font-mono uppercase tracking-tighter">GPU Instancing Ready</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                        <span className="text-white/30 text-[9px] font-mono uppercase tracking-tighter">Jolt Physics: Loaded</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
-                        <span className="text-white/30 text-[9px] font-mono uppercase tracking-tighter">Matrix Pool: Initialized</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div className="absolute bottom-12 text-white/10 font-bebas text-8xl pointer-events-none select-none tracking-tighter">
-                ARCADE GPU
-            </div>
-        </motion.div>
-    );
-};
 
 const Joystick = ({ onChange }: { onChange: (dir: { x: number, y: number }) => void }) => {
     const [dragging, setDragging] = useState(false);
@@ -149,11 +94,8 @@ const Joystick = ({ onChange }: { onChange: (dir: { x: number, y: number }) => v
 // --- APP COMPONENT ---
 
 const App = () => {
-    const [loadProgress, setLoadProgress] = useState(0);
     const [isReady, setIsReady] = useState(false);
     const gameScreenRef = useRef<GameScreen | null>(null);
-
-    const loadingRef = useRef(false);
 
     useEffect(() => {
         const handleContextMenu = (e: MouseEvent) => {
@@ -161,44 +103,29 @@ const App = () => {
         };
         document.addEventListener('contextmenu', handleContextMenu);
 
-        let active = true;
-
         const init = async () => {
-            console.log('App::init: Starting');
-            const models = [
-                '/models/tank_body.jsm',
-                '/models/tank_turret.jsm',
-                '/models/tank_barrel.jsm'
-            ];
-
-            await Preloader.loadAll(models, (prog) => {
-                if (active) setLoadProgress(prog);
-            });
+            // Give a moment for the DOM to settle
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
-            if (!active) return;
-            await new Promise(resolve => setTimeout(resolve, 800));
-            if (!active) return;
+            // Initialization is handled by singleton imports, 
+            // but we need to wait for Jolt and WebGPU.
+            // gfx3Manager initializes itself on import, but we need to make sure the loop starts.
             
-            console.log('App::init: Starting GameScreen');
             const screen = new GameScreen();
             gameScreenRef.current = screen;
             screenManager.requestSetScreen(screen);
             
-            console.log('App::init: em startup');
+            await screen.onEnter();
+            
             em.startup(false);
             setIsReady(true);
-            console.log('App::init: System Ready');
         };
 
         init();
 
         return () => {
-            active = false;
             document.removeEventListener('contextmenu', handleContextMenu);
             em.pause();
-            if (gameScreenRef.current) {
-                gameScreenRef.current.destroy();
-            }
         };
     }, []);
 
@@ -247,7 +174,17 @@ const App = () => {
     return (
         <div className="fixed inset-0 w-full h-full pointer-events-none flex flex-col justify-end p-8 overflow-hidden font-sans">
             <AnimatePresence>
-                {!isReady && <LoadingScreen progress={loadProgress} />}
+                {!isReady && (
+                    <motion.div 
+                        initial={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-slate-900 flex items-center justify-center z-50 pointer-events-auto"
+                    >
+                        <div className="text-white text-2xl font-bebas tracking-widest animate-pulse">
+                            INITIALIZING ARCADEGPU...
+                        </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
 
             <div className="absolute top-8 left-8 pointer-events-auto">

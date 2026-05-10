@@ -86,6 +86,12 @@ export class GameScreen extends Screen {
   async onEnter() {
     gfx3PostRenderer.setParam(PostParam.PIXELATION_ENABLED, 0.0);
     
+    // Load Models
+    await Promise.all([
+      this.tank.load(),
+      Enemy.initMeshes()
+    ]);
+    
     // Desktop Controls
     inputManager.registerAction('keyboard', 'KeyW', 'THR_FWD');
     inputManager.registerAction('keyboard', 'KeyS', 'THR_BWD');
@@ -102,24 +108,11 @@ export class GameScreen extends Screen {
 
     this.camera.setPosition(0, 10, -10);
     this.camera.lookAt(0, 0, 0);
-    this.camera.getView().setBgColor(0.3, 0.5, 0.8, 1.0); // Nice sky blue
+    this.camera.getView().setBgColor(0.53, 0.81, 0.92, 1.0); // Sky blue
     
     const tankPos = this.tank.body.getPosition();
     this.cameraLookTarget = [tankPos[0], tankPos[1] + 1.5, tankPos[2]];
     this.isReady = true;
-  }
-
-  onExit() {
-    if (typeof window !== 'undefined') {
-        window.removeEventListener('pointerdown', this.handleGlobalPointerDown);
-        window.removeEventListener('pointerup', this.handleGlobalPointerUp);
-    }
-    eventManager.unsubscribe(inputManager, 'E_MOUSE_MOVE', this);
-    this.isReady = false;
-  }
-
-  destroy() {
-    this.onExit();
   }
 
   handleMouseMove = (data: any) => {
@@ -191,7 +184,7 @@ export class GameScreen extends Screen {
         p.life -= ts / 1000;
         
         if (p.life <= 0) {
-            gfx3JoltManager.remove(p.body.bodyId);
+            gfx3JoltManager.removeBody(p.body);
             this.tank.projectiles.splice(i, 1);
             continue;
         }
@@ -251,7 +244,7 @@ export class GameScreen extends Screen {
                         exp.reset(ePos.GetX(), ePos.GetY(), ePos.GetZ(), [0.8, 0.2, 0.2], undefined, p.type === 'grenade' ? 2.5 : 1.5);
                         this.explosions.push(exp);
                     }
-                    gfx3JoltManager.remove(enemy.physicsBody.bodyId);
+                    gfx3JoltManager.removeBody(enemy.physicsBody);
                     gfx3JoltManager.bodyInterface.SetPosition(enemy.physicsBody.body.GetID(), VEC3_TO_JOLT_RVEC3([0, -100, 0]), Gfx3Jolt.EActivation_DontActivate);
                 }
                 break;
@@ -259,7 +252,7 @@ export class GameScreen extends Screen {
         }
         
         if (p.life <= 0) {
-            gfx3JoltManager.remove(p.body.bodyId);
+            gfx3JoltManager.removeBody(p.body);
             this.tank.projectiles.splice(i, 1);
             continue;
         }
@@ -297,7 +290,7 @@ export class GameScreen extends Screen {
                                 exp.reset(ePos.GetX(), ePos.GetY(), ePos.GetZ(), [0.8, 0.2, 0.2], undefined, 2.0);
                                 this.explosions.push(exp);
                             }
-                            gfx3JoltManager.remove(enemy.physicsBody.bodyId);
+                            gfx3JoltManager.removeBody(enemy.physicsBody);
                             gfx3JoltManager.bodyInterface.SetPosition(enemy.physicsBody.body.GetID(), VEC3_TO_JOLT_RVEC3([0, -100, 0]), Gfx3Jolt.EActivation_DontActivate);
                         }
                     }
@@ -310,7 +303,7 @@ export class GameScreen extends Screen {
                 }
             }
             
-            gfx3JoltManager.remove(p.body.bodyId);
+            gfx3JoltManager.removeBody(p.body);
             this.tank.projectiles.splice(i, 1);
         } else {
             p.lastVel = [curV.GetX(), curV.GetY(), curV.GetZ()];
@@ -324,7 +317,7 @@ export class GameScreen extends Screen {
             const p = enemy.projectiles[i];
             p.life -= ts / 1000;
             if (p.life <= 0) {
-                gfx3JoltManager.remove(p.body.bodyId);
+                gfx3JoltManager.removeBody(p.body);
                 enemy.projectiles.splice(i, 1);
                 continue;
             }
@@ -343,7 +336,7 @@ export class GameScreen extends Screen {
                     exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ(), [1, 0, 0], undefined, 1.2);
                     this.explosions.push(exp);
                 }
-                gfx3JoltManager.remove(p.body.bodyId);
+                gfx3JoltManager.removeBody(p.body);
                 enemy.projectiles.splice(i, 1);
             } else if (pPos.GetY() < 0.2) {
                 p.life = 0;
@@ -352,7 +345,7 @@ export class GameScreen extends Screen {
                     exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ(), [0.5, 0.5, 0.5], undefined, 1.0);
                     this.explosions.push(exp);
                 }
-                gfx3JoltManager.remove(p.body.bodyId);
+                gfx3JoltManager.removeBody(p.body);
                 enemy.projectiles.splice(i, 1);
             }
         }
@@ -376,11 +369,7 @@ export class GameScreen extends Screen {
             
             if (dist < 2.5) {
                 p.life = 0;
-                const exp = this.explosionPool.acquire() as Explosion;
-                if (exp) {
-                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ());
-                    this.explosions.push(exp);
-                }
+                this.explosions.push(new Explosion(pPos.GetX(), pPos.GetY(), pPos.GetZ()));
                 
                 // Add a push to the tank
                 const pushDir = p.rot.rotateVector([0, 0, -1]);
@@ -390,11 +379,7 @@ export class GameScreen extends Screen {
                 // Add camera shake or player damage logic here
             } else if (pPos.GetY() < 0.2 || (Math.abs(lastHVelSq - hVelSq) > 100)) {
                 p.life = 0;
-                const exp = this.explosionPool.acquire() as Explosion;
-                if (exp) {
-                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ());
-                    this.explosions.push(exp);
-                }
+                this.explosions.push(new Explosion(pPos.GetX(), pPos.GetY(), pPos.GetZ()));
             }
         }
     }
@@ -414,11 +399,7 @@ export class GameScreen extends Screen {
        
        const muzzleColor: [number, number, number] = didShoot === 'grenade' ? [0.8, 0.4, 0.1] : [1.0, 0.8, 0.2];
        const scaleMultiplier = didShoot === 'grenade' ? 2.5 : 1.0; // Increased scale for grenade muzzle
-       const muzzleExp = this.explosionPool.acquire() as Explosion;
-       if (muzzleExp) {
-           muzzleExp.reset(muzzlePos[0], muzzlePos[1], muzzlePos[2], muzzleColor, dir, scaleMultiplier, 'muzzle');
-           this.explosions.push(muzzleExp);
-       }
+       this.explosions.push(new Explosion(muzzlePos[0], muzzlePos[1], muzzlePos[2], muzzleColor, dir, scaleMultiplier, 'muzzle'));
     }
 
     // Camera Follow
@@ -493,9 +474,7 @@ export class GameScreen extends Screen {
   }
 
   render(ts: number) {
-    if (!this.isReady) {
-        return;
-    }
+    if (!this.isReady) return;
     
     gfx3Manager.beginRender();
     

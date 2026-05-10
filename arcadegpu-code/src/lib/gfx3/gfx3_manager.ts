@@ -157,7 +157,6 @@ class Gfx3Manager {
   beginRender(): void {
     this.commandEncoder = this.device.createCommandEncoder();
     this.lastRenderStart = Date.now();
-    this.renderingTextureView = this.ctx.getCurrentTexture().createView();
   }
 
   /**
@@ -165,10 +164,6 @@ class Gfx3Manager {
    * Warning: You need to call this method before the render calls you want include in this pass.
    */
   beginPassRender(viewIndex: number): void {
-    if (this.canvas.width === 0 || this.canvas.height === 0) {
-      return;
-    }
-
     const view = this.views[viewIndex];
     const viewport = view.getViewport();
     const viewportX = this.canvas.width * viewport.xFactor;
@@ -176,7 +171,8 @@ class Gfx3Manager {
     const viewportWidth = this.canvas.width * viewport.widthFactor;
     const viewportHeight = this.canvas.height * viewport.heightFactor;
     const viewBgColor = view.getBgColor();
-    
+
+    this.renderingTextureView = this.ctx.getCurrentTexture().createView();
     const textureView = this.destinationTexture ? this.destinationTexture.gpuTextureView : this.renderingTextureView!;
 
     this.passEncoder = this.commandEncoder.beginRenderPass({
@@ -369,9 +365,7 @@ class Gfx3Manager {
    * Creates a default rendering texture.
    */
   createRenderingTexture(format: GPUTextureFormat = navigator.gpu.getPreferredCanvasFormat(), samplerDescriptor: GPUSamplerDescriptor = { magFilter: 'nearest', minFilter: 'nearest' }, width: number = this.getWidth(), height: number = this.getHeight()): Gfx3RenderingTexture {
-    const w = Math.max(1, width);
-    const h = Math.max(1, height);
-    const texture = this.createEmptyTexture(w, h, format, samplerDescriptor);
+    const texture = this.createEmptyTexture(width, height, format, samplerDescriptor);
     return { gpuTexture: texture.gpuTexture, gpuSampler: texture.gpuSampler, gpuTextureView: texture.gpuTexture.createView() };
   }
 

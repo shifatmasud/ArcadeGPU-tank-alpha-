@@ -60,7 +60,6 @@ class EngineManager {
    * @param {boolean} [enableScanlines=true] - Determines whether scanlines should be enabled or not.
    */
   startup(enableScanlines: boolean = true, ): void {
-    if (this.lastAnimationFrameId) return; // Already running
     coreManager.enableScanlines(enableScanlines);
     this.run(0);
   }
@@ -75,7 +74,6 @@ class EngineManager {
     if (state === 'pause') {
       this.pauseStartTime = timeStamp;
       cancelAnimationFrame(this.lastAnimationFrameId);
-      this.lastAnimationFrameId = 0; // Clear it so it can be restarted
       return;
     }
 
