@@ -47,6 +47,14 @@ export class Environment {
     const terrainData = createTerrainMesh(400, 400, 32, 32, [0.25, 0.45, 0.2], canvas);
     this.floor = terrainData.mesh;
     
+    // Add a simple box collider as a test
+    gfx3JoltManager.addBox({
+        width: 400, height: 1, depth: 400,
+        x: 0, y: -2, z: 0,
+        motionType: Gfx3Jolt.EMotionType_Static,
+        layer: JOLT_LAYER_NON_MOVING
+    });
+
     gfx3JoltManager.addPolygonShape({
         vertices: terrainData.vertices,
         indexes: terrainData.indexes,
