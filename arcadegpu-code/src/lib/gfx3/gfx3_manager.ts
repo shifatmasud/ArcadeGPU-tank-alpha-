@@ -94,15 +94,10 @@ class Gfx3Manager {
     }
     
     if (this.canvas.clientWidth === 0) {
-        const devicePixelRatio = window.devicePixelRatio || 1;
-        this.canvas.width = Math.max(1, window.innerWidth * devicePixelRatio);
-        this.canvas.height = Math.max(1, window.innerHeight * devicePixelRatio);
-    } else {
-        const devicePixelRatio = window.devicePixelRatio || 1;
-        this.canvas.width = Math.max(1, this.canvas.clientWidth * devicePixelRatio);
-        this.canvas.height = Math.max(1, this.canvas.clientHeight * devicePixelRatio);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.initialize();
     }
-    console.log('Gfx3Manager::initialize: Canvas initialized', this.canvas.width, this.canvas.height);
+    console.log('Gfx3Manager::initialize: Canvas found', this.canvas.clientWidth, this.canvas.clientHeight);
 
     this.ctx = this.canvas.getContext('webgpu')!;
     if (!this.ctx) {
@@ -115,6 +110,9 @@ class Gfx3Manager {
       alphaMode: ALPHA_MODE
     });
 
+    const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
+    this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
     this.renderingTextureSampler = this.device.createSampler();
     this.currentView = this.createView();
 
@@ -501,28 +499,30 @@ class Gfx3Manager {
    * Returns the client width of the canvas.
    */
   getClientWidth(): number {
-    return this.canvas.clientWidth || (this.canvas.width / (window.devicePixelRatio || 1));
+    return this.canvas.clientWidth;
   }
 
   /**
    * Returns the client height of the canvas.
    */
   getClientHeight(): number {
-    return this.canvas.clientHeight || (this.canvas.height / (window.devicePixelRatio || 1));
+    return this.canvas.clientHeight;
   }
 
   /**
    * Returns the resolution width of the canvas.
    */
   getWidth(): number {
-    return this.canvas.width;
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    return this.canvas.clientWidth * devicePixelRatio;
   }
 
   /**
    * Returns the resolution height of the canvas.
    */
   getHeight(): number {
-    return this.canvas.height;
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    return this.canvas.clientHeight * devicePixelRatio;
   }
 
   /**
@@ -680,7 +680,7 @@ class Gfx3Manager {
    * Resizes the canvas, recreates the depth texture and view, and updates the screen size for each view.
    */
   #handleWindowResize(): void {
-    const devicePixelRatio = window.devicePixelRatio || 1;
+    const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
     this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
     this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
 
@@ -699,10 +699,6 @@ class Gfx3Manager {
     for (const view of this.views) {
       view.setScreenSize(this.canvas.width, this.canvas.height);
     }
-  }
-
-  resize(): void {
-    this.#handleWindowResize();
   }
 }
 
