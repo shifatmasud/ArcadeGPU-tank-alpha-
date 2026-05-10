@@ -183,19 +183,24 @@ const App = () => {
         window.addEventListener('resize', handleResize);
 
         const init = async () => {
-            // Wait for DOM
-            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log('App::init: Starting...');
+            // Wait for DOM to settle
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             handleResize();
             
+            console.log('App::init: Creating GameScreen...');
             const screen = new GameScreen();
             gameScreenRef.current = screen;
             screenManager.requestSetScreen(screen);
             
+            console.log('App::init: Entering GameScreen...');
             await screen.onEnter();
             
+            console.log('App::init: Starting Engine...');
             em.startup(false);
             setIsReady(true);
+            console.log('App::init: Ready!');
 
             // Simple loop for UI data
             const uiLoop = () => {

@@ -170,7 +170,7 @@ class Gfx3JoltManager {
 
   addEntity(shape: Jolt.Shape, options: Gfx3JoltCreatePrimitiveOptions = {}): Gfx3JoltEntity {
     const pos = new Gfx3Jolt.RVec3(options.x ?? 0, options.y ?? 0, options.z ?? 0);
-    const rot = options.rotation ?? Gfx3Jolt.Quat.prototype.sIdentity();
+    const rot = options.rotation ?? new Gfx3Jolt.Quat(0, 0, 0, 1);
     const creationSettings = new Gfx3Jolt.BodyCreationSettings(shape, pos, rot, options.motionType ?? Gfx3Jolt.EMotionType_Static, options.layer ?? JOLT_LAYER_NON_MOVING);
 
     if (options.settings) {

@@ -18,7 +18,7 @@ import { eventManager } from '@lib/core/event_manager';
 import { Gfx3Drawable, Gfx3MeshEffect } from '@lib/gfx3/gfx3_drawable';
 import { inputManager } from '@lib/input/input_manager';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Bomb, LogIn, LogOut } from 'lucide-react';
+import { Target, Bomb, LogIn, LogOut, Sword, Crosshair, ArrowsClockwise as ArrowsDownUp, Cpu, Activity, Shield, Wrench } from 'phosphor-react';
 import { Tank } from './Tank';
 import { Environment } from './Environment';
 import { Enemy } from './Enemy';
@@ -493,7 +493,8 @@ export class GameScreen extends Screen {
     gfx3Manager.beginRender();
     
     // 1. Render scene to post-processing source texture
-    gfx3Manager.setDestinationTexture(gfx3PostRenderer.getSourceTexture());
+    const sourceTexture = gfx3PostRenderer.getSourceTexture();
+    gfx3Manager.setDestinationTexture(sourceTexture);
     gfx3Manager.beginPassRender(0);
     gfx3MeshRenderer.render(ts);
     gfx3Manager.endPassRender();

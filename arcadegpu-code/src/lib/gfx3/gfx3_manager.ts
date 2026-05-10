@@ -94,10 +94,15 @@ class Gfx3Manager {
     }
     
     if (this.canvas.clientWidth === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return this.initialize();
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        this.canvas.width = Math.max(1, window.innerWidth * devicePixelRatio);
+        this.canvas.height = Math.max(1, window.innerHeight * devicePixelRatio);
+    } else {
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        this.canvas.width = Math.max(1, this.canvas.clientWidth * devicePixelRatio);
+        this.canvas.height = Math.max(1, this.canvas.clientHeight * devicePixelRatio);
     }
-    console.log('Gfx3Manager::initialize: Canvas found', this.canvas.clientWidth, this.canvas.clientHeight);
+    console.log('Gfx3Manager::initialize: Canvas initialized', this.canvas.width, this.canvas.height);
 
     this.ctx = this.canvas.getContext('webgpu')!;
     if (!this.ctx) {
@@ -110,9 +115,6 @@ class Gfx3Manager {
       alphaMode: ALPHA_MODE
     });
 
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
-    this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
     this.renderingTextureSampler = this.device.createSampler();
     this.currentView = this.createView();
 
@@ -499,30 +501,28 @@ class Gfx3Manager {
    * Returns the client width of the canvas.
    */
   getClientWidth(): number {
-    return this.canvas.clientWidth;
+    return this.canvas.clientWidth || (this.canvas.width / (window.devicePixelRatio || 1));
   }
 
   /**
    * Returns the client height of the canvas.
    */
   getClientHeight(): number {
-    return this.canvas.clientHeight;
+    return this.canvas.clientHeight || (this.canvas.height / (window.devicePixelRatio || 1));
   }
 
   /**
    * Returns the resolution width of the canvas.
    */
   getWidth(): number {
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    return this.canvas.clientWidth * devicePixelRatio;
+    return this.canvas.width;
   }
 
   /**
    * Returns the resolution height of the canvas.
    */
   getHeight(): number {
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    return this.canvas.clientHeight * devicePixelRatio;
+    return this.canvas.height;
   }
 
   /**

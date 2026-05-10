@@ -2,9 +2,21 @@
 
 body {
   margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#CANVAS_3D {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
 }
 
 * {
