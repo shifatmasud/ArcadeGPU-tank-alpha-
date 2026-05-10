@@ -103,7 +103,7 @@ export class GameScreen extends Screen {
     inputManager.registerAction('keyboard', 'KeyF', 'CAM_Z_OUT');
     inputManager.registerAction('keyboard', 'Space', 'FIRE');
 
-    inputManager.setPointerLockEnabled(true);
+    inputManager.setPointerLockEnabled(false);
     eventManager.subscribe(inputManager, 'E_MOUSE_MOVE', this, this.handleMouseMove);
 
     this.camera.setPosition(0, 10, -10);
@@ -369,7 +369,11 @@ export class GameScreen extends Screen {
             
             if (dist < 2.5) {
                 p.life = 0;
-                this.explosions.push(new Explosion(pPos.GetX(), pPos.GetY(), pPos.GetZ()));
+                const exp = this.explosionPool.acquire() as Explosion;
+                if (exp) {
+                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ());
+                    this.explosions.push(exp);
+                }
                 
                 // Add a push to the tank
                 const pushDir = p.rot.rotateVector([0, 0, -1]);
@@ -379,7 +383,11 @@ export class GameScreen extends Screen {
                 // Add camera shake or player damage logic here
             } else if (pPos.GetY() < 0.2 || (Math.abs(lastHVelSq - hVelSq) > 100)) {
                 p.life = 0;
-                this.explosions.push(new Explosion(pPos.GetX(), pPos.GetY(), pPos.GetZ()));
+                const exp = this.explosionPool.acquire() as Explosion;
+                if (exp) {
+                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ());
+                    this.explosions.push(exp);
+                }
             }
         }
     }
@@ -399,7 +407,11 @@ export class GameScreen extends Screen {
        
        const muzzleColor: [number, number, number] = didShoot === 'grenade' ? [0.8, 0.4, 0.1] : [1.0, 0.8, 0.2];
        const scaleMultiplier = didShoot === 'grenade' ? 2.5 : 1.0; // Increased scale for grenade muzzle
-       this.explosions.push(new Explosion(muzzlePos[0], muzzlePos[1], muzzlePos[2], muzzleColor, dir, scaleMultiplier, 'muzzle'));
+       const exp = this.explosionPool.acquire() as Explosion;
+       if (exp) {
+           exp.reset(muzzlePos[0], muzzlePos[1], muzzlePos[2], muzzleColor, dir, scaleMultiplier, 'muzzle');
+           this.explosions.push(exp);
+       }
     }
 
     // Camera Follow

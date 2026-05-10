@@ -224,6 +224,10 @@ class Gfx3JoltManager {
     this.bodyInterface.DestroyBody(id);
   }
 
+  removeBody(entity: Gfx3JoltEntity) {
+    this.remove(entity.bodyId);
+  }
+
   clear() {
     for (const e of this.entities) {
       this.remove(e.bodyId);
