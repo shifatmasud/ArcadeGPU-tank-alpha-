@@ -56,7 +56,7 @@ export class GameScreen extends Screen {
     });
 
     // Spawn some enemies
-    for (let i = 0; i < 15; i++) {
+    while (this.enemies.length < 2) {
        const x = (Math.random() - 0.5) * 200;
        const z = (Math.random() - 0.5) * 200;
        if (Math.abs(x) < 20 && Math.abs(z) < 20) continue;
@@ -371,21 +371,23 @@ export class GameScreen extends Screen {
                 p.life = 0;
                 const exp = this.explosionPool.acquire() as Explosion;
                 if (exp) {
-                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ());
+                    const expColor: [number, number, number] = [1.0, 0.4, 0.1];
+                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ(), expColor, undefined, 2.0, 'grenade');
                     this.explosions.push(exp);
                 }
                 
                 // Add a push to the tank
                 const pushDir = p.rot.rotateVector([0, 0, -1]);
-                const pushForce = new Gfx3Jolt.Vec3(pushDir[0] * 800, 200, pushDir[2] * 800);
+                const pushForce = new Gfx3Jolt.Vec3(pushDir[0] * 1200, 300, pushDir[2] * 1200);
                 gfx3JoltManager.bodyInterface.AddImpulse(this.tank.physicsBody.body.GetID(), pushForce);
-                
-                // Add camera shake or player damage logic here
-            } else if (pPos.GetY() < 0.2 || (Math.abs(lastHVelSq - hVelSq) > 100)) {
+            } else if (pPos.GetY() < 0.2 || (Math.abs(lastHVelSq - hVelSq) > 150)) {
+                // Ground or wall hit
                 p.life = 0;
                 const exp = this.explosionPool.acquire() as Explosion;
                 if (exp) {
-                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ());
+                    const isHardHit = Math.abs(lastHVelSq - hVelSq) > 300;
+                    const expColor: [number, number, number] = isHardHit ? [1, 0.5, 0.2] : [0.6, 0.6, 0.6];
+                    exp.reset(pPos.GetX(), pPos.GetY(), pPos.GetZ(), expColor, undefined, isHardHit ? 1.5 : 0.8, 'normal');
                     this.explosions.push(exp);
                 }
             }

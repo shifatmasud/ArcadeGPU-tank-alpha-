@@ -44,6 +44,88 @@ export function createBoxGeo(width: number, height: number, depth: number, color
   return Gfx3Mesh.buildVertices(coords.length / 3, coords, [], colors, normals);
 }
 
+export function createCylinderGeo(radius: number, height: number, segments: number, color: [number, number, number]) {
+  const coords = [];
+  const colors = [];
+  const normals = [];
+  
+  const h = height / 2;
+  
+  for (let i = 0; i < segments; i++) {
+    const angle1 = (i / segments) * Math.PI * 2;
+    const angle2 = ((i + 1) / segments) * Math.PI * 2;
+    
+    const x1 = Math.cos(angle1) * radius;
+    const z1 = Math.sin(angle1) * radius;
+    const x2 = Math.cos(angle2) * radius;
+    const z2 = Math.sin(angle2) * radius;
+    
+    // Side
+    coords.push(x1, -h, z1, x2, -h, z2, x2, h, z2);
+    coords.push(x1, -h, z1, x2, h, z2, x1, h, z1);
+    
+    const n1 = UT.VEC3_NORMALIZE([x1, 0, z1]);
+    const n2 = UT.VEC3_NORMALIZE([x2, 0, z2]);
+    
+    normals.push(n1[0], n1[1], n1[2], n2[0], n2[1], n2[2], n2[0], n2[1], n2[2]);
+    normals.push(n1[0], n1[1], n1[2], n2[0], n2[1], n2[2], n1[0], n1[1], n1[2]);
+    
+    for (let j = 0; j < 6; j++) colors.push(color[0], color[1], color[2]);
+    
+    // Top
+    coords.push(0, h, 0, x2, h, z2, x1, h, z1);
+    for (let j = 0; j < 3; j++) {
+      normals.push(0, 1, 0);
+      colors.push(color[0], color[1], color[2]);
+    }
+    
+    // Bottom
+    coords.push(0, -h, 0, x1, -h, z1, x2, -h, z2);
+    for (let j = 0; j < 3; j++) {
+      normals.push(0, -1, 0);
+      colors.push(color[0], color[1], color[2]);
+    }
+  }
+  
+  return Gfx3Mesh.buildVertices(coords.length / 3, coords, [], colors, normals);
+}
+
+export function createSphereGeo(radius: number, latSegments: number, lonSegments: number, color: [number, number, number]) {
+  const coords = [];
+  const colors = [];
+  const normals = [];
+
+  for (let i = 0; i < latSegments; i++) {
+    const lat1 = (i / latSegments) * Math.PI;
+    const lat2 = ((i + 1) / latSegments) * Math.PI;
+    
+    for (let j = 0; j < lonSegments; j++) {
+      const lon1 = (j / lonSegments) * Math.PI * 2;
+      const lon2 = ((j + 1) / lonSegments) * Math.PI * 2;
+      
+      const p1 = [radius * Math.sin(lat1) * Math.cos(lon1), radius * Math.cos(lat1), radius * Math.sin(lat1) * Math.sin(lon1)];
+      const p2 = [radius * Math.sin(lat2) * Math.cos(lon1), radius * Math.cos(lat2), radius * Math.sin(lat2) * Math.sin(lon1)];
+      const p3 = [radius * Math.sin(lat2) * Math.cos(lon2), radius * Math.cos(lat2), radius * Math.sin(lat2) * Math.sin(lon2)];
+      const p4 = [radius * Math.sin(lat1) * Math.cos(lon2), radius * Math.cos(lat1), radius * Math.sin(lat1) * Math.sin(lon2)];
+      
+      coords.push(...p1, ...p2, ...p3);
+      coords.push(...p1, ...p3, ...p4);
+      
+      const n1 = UT.VEC3_NORMALIZE(p1);
+      const n2 = UT.VEC3_NORMALIZE(p2);
+      const n3 = UT.VEC3_NORMALIZE(p3);
+      const n4 = UT.VEC3_NORMALIZE(p4);
+      
+      normals.push(...n1, ...n2, ...n3);
+      normals.push(...n1, ...n3, ...n4);
+      
+      for (let k = 0; k < 6; k++) colors.push(color[0], color[1], color[2]);
+    }
+  }
+
+  return Gfx3Mesh.buildVertices(coords.length / 3, coords, [], colors, normals);
+}
+
 export function combineGeos(geos: { geo: any, matrix: mat4 }[]): Gfx3Mesh {
     const totalVertices = geos.reduce((sum, g) => sum + g.geo.vertices.length, 0);
     const combinedVertices = new Float32Array(totalVertices);

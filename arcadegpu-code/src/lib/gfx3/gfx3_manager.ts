@@ -110,7 +110,7 @@ class Gfx3Manager {
       alphaMode: ALPHA_MODE
     });
 
-    const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    const devicePixelRatio = window.devicePixelRatio || 1;
     this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
     this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
     this.renderingTextureSampler = this.device.createSampler();
@@ -680,7 +680,7 @@ class Gfx3Manager {
    * Resizes the canvas, recreates the depth texture and view, and updates the screen size for each view.
    */
   #handleWindowResize(): void {
-    const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    const devicePixelRatio = window.devicePixelRatio || 1;
     this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
     this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
 
@@ -699,6 +699,10 @@ class Gfx3Manager {
     for (const view of this.views) {
       view.setScreenSize(this.canvas.width, this.canvas.height);
     }
+  }
+
+  resize(): void {
+    this.#handleWindowResize();
   }
 }
 

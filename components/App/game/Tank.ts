@@ -4,7 +4,7 @@ import { Gfx3MeshJSM } from '@lib/gfx3_mesh/gfx3_mesh_jsm';
 import { gfx3MeshRenderer } from '@lib/gfx3_mesh/gfx3_mesh_renderer';
 import { Quaternion } from '@lib/core/quaternion';
 import { UT } from '@lib/core/utils';
-import { createBoxMesh } from './GameUtils';
+import { createBoxMesh, createCylinderGeo, createSphereGeo } from './GameUtils';
 
 /**
  * The Tank class represents the player-controlled vehicle.
@@ -51,12 +51,18 @@ export class Tank {
     this.antenna = createBoxMesh(0.05, 1.5, 0.05, [0.1, 0.1, 0.1]);
 
     if (!Tank.projMesh) {
-      // Shape it more like a bullet/shell: slightly thicker, not just a thin long box, maybe standard spherical or shorter box.
-      // E.g., 0.3 x 0.3 x 0.8
-      Tank.projMesh = createBoxMesh(0.5, 0.5, 1.2, [1.0, 0.8, 0.2]);
+      Tank.projMesh = new Gfx3Mesh();
+      Tank.projMesh.geo = createCylinderGeo(0.2, 0.8, 8, [1.0, 0.8, 0.2]);
+      Tank.projMesh.beginVertices(Tank.projMesh.geo.vertices.length / 17);
+      Tank.projMesh.setVertices(Tank.projMesh.geo.vertices);
+      Tank.projMesh.endVertices();
     }
     if (!Tank.projGrenadeMesh) {
-      Tank.projGrenadeMesh = createBoxMesh(0.5, 0.5, 0.5, [0.2, 0.2, 0.2]);
+      Tank.projGrenadeMesh = new Gfx3Mesh();
+      Tank.projGrenadeMesh.geo = createSphereGeo(0.3, 8, 8, [0.3, 0.3, 0.3]);
+      Tank.projGrenadeMesh.beginVertices(Tank.projGrenadeMesh.geo.vertices.length / 17);
+      Tank.projGrenadeMesh.setVertices(Tank.projGrenadeMesh.geo.vertices);
+      Tank.projGrenadeMesh.endVertices();
     }
 
     this.physicsBody = gfx3JoltManager.addBox({
@@ -310,23 +316,23 @@ export class Tank {
     ];
     
     const pBody = gfx3JoltManager.addBox({
-      width: 0.5, height: 0.5, depth: type === 'grenade' ? 0.6 : 1.2,
+      width: 0.3, height: 0.3, depth: type === 'grenade' ? 0.4 : 0.8,
       x: startPos[0], y: startPos[1], z: startPos[2],
       motionType: Gfx3Jolt.EMotionType_Dynamic,
       layer: JOLT_LAYER_MOVING,
       settings: { 
-          mMassPropertiesOverride: 0.01, 
-          mRestitution: 0.0,
+          mMassPropertiesOverride: 0.05, 
+          mRestitution: 0.2,
           mMotionQuality: Gfx3Jolt.EMotionQuality_LinearCast 
       }
     });
     
-    let forwardSpeed = 50; // Slower, visible bullets
-    let upwardVelocity = 0.5; // slight arc for normal fire
+    let forwardSpeed = 80; // Faster bullets
+    let upwardVelocity = 0.8; 
     
     if (type === 'grenade') {
-        forwardSpeed = 25;
-        upwardVelocity = 15;
+        forwardSpeed = 35;
+        upwardVelocity = 18;
     }
     
     const pVel = new Gfx3Jolt.Vec3(
