@@ -4,6 +4,8 @@
 
 A high-performance 3D Tank Game built with the **ArcadeGPU** engine. This project features real-time Jolt Physics, custom 3D mesh rendering, and a nostalgic arcade aesthetic.
 
+**Remix:** [ai.studio/apps/cd4779aa-58fb-43a6-8a2f-757bb5829982](https://ai.studio/apps/cd4779aa-58fb-43a6-8a2f-757bb5829982)
+
 ## 🎮 Game Version: v0.3.1
 *   **Engine:** ArcadeGPU v1.0
 *   **Theme:** Retro-Arcade / Cyberpunk
