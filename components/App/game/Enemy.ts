@@ -27,22 +27,32 @@ export class Enemy {
   static async initMeshes() {
     if (Enemy.initialized) return;
     
-    const bJSM = new Gfx3MeshJSM();
-    const tJSM = new Gfx3MeshJSM();
-    const brJSM = new Gfx3MeshJSM();
-    await Promise.all([
-        bJSM.loadFromFile('/models/tank_body.jsm'),
-        tJSM.loadFromFile('/models/tank_turret.jsm'),
-        brJSM.loadFromFile('/models/tank_barrel.jsm')
-    ]);
+    const bodyJSM = new Gfx3MeshJSM();
+    const turretJSM = new Gfx3MeshJSM();
+    const barrelJSM = new Gfx3MeshJSM();
 
-    Enemy.bodyMesh = bJSM;
-    Enemy.turretMesh = tJSM;
-    Enemy.barrelMesh = brJSM;
+    try {
+      await Promise.all([
+        bodyJSM.loadFromFile('models/tank_body.jsm'),
+        turretJSM.loadFromFile('models/tank_turret.jsm'),
+        barrelJSM.loadFromFile('models/tank_barrel.jsm')
+      ]);
+
+      Enemy.bodyMesh = bodyJSM;
+      Enemy.turretMesh = turretJSM;
+      Enemy.barrelMesh = barrelJSM;
+    } catch (e) {
+      console.warn('Enemy: Failed to load JSM models, falling back to boxes.', e);
+      
+      const chassisColor: [number, number, number] = [0.8, 0.2, 0.2]; 
+      const turretColor: [number, number, number] = [0.6, 0.1, 0.1];
+      Enemy.bodyMesh = createBoxMesh(1.5, 0.6, 2.2, chassisColor);
+      Enemy.turretMesh = createBoxMesh(1.1, 0.5, 1.1, turretColor);
+      Enemy.barrelMesh = createBoxMesh(0.2, 0.2, 1.5, [0.2, 0.2, 0.2]);
+    }
 
     const trackColor: [number, number, number] = [0.15, 0.15, 0.15];
     const engineColor: [number, number, number] = [0.2, 0.2, 0.2];
-
     Enemy.trackLMesh = createBoxMesh(0.4, 0.6, 2.4, trackColor);
     Enemy.trackRMesh = createBoxMesh(0.4, 0.6, 2.4, trackColor);
     Enemy.engineMesh = createBoxMesh(1.2, 0.4, 0.6, engineColor);

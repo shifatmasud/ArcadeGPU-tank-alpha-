@@ -65,9 +65,9 @@ export class Tank {
 
     try {
       await Promise.all([
-        bodyJSM.loadFromFile('/models/tank_body.jsm'),
-        turretJSM.loadFromFile('/models/tank_turret.jsm'),
-        barrelJSM.loadFromFile('/models/tank_barrel.jsm')
+        bodyJSM.loadFromFile('models/tank_body.jsm'),
+        turretJSM.loadFromFile('models/tank_turret.jsm'),
+        barrelJSM.loadFromFile('models/tank_barrel.jsm')
       ]);
 
       this.body = bodyJSM;
