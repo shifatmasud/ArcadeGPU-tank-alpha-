@@ -28,6 +28,7 @@ export class Tank {
   turretYaw: number = 0;
   wasFiringInternal: boolean = false;
   currentUp: vec3 = [0, 1, 0];
+  hp: number = 100;
   
   constructor() {
     const chassisColor: [number, number, number] = [0.4, 0.5, 0.3];
@@ -263,6 +264,16 @@ export class Tank {
     this.barrel.draw();
     this.hatch.draw();
     this.antenna.draw();
+    
+    this.drawHealthBar(this.body.getPosition() as vec3, this.hp, 100);
+  }
+
+  drawHealthBar(origin: vec3, hp: number, maxHp: number) {
+      const hpPercentage = Math.max(0, hp / maxHp);
+      const barColor: [number, number, number] = hpPercentage > 0.5 ? [0, 1, 0] : [1, 0, 0];
+      const barMesh = createBoxMesh(1.5 * hpPercentage, 0.2, 0.2, barColor);
+      const matBar = UT.MAT4_TRANSFORM([origin[0], origin[1] + 3.0, origin[2]], [0,0,0], [1,1,1], new Quaternion());
+      gfx3MeshRenderer.drawMesh(barMesh, matBar);
   }
 }
 

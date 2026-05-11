@@ -26,29 +26,27 @@ export class Enemy {
    */
   static async initMeshes() {
     if (Enemy.initialized) return;
-    Enemy.initialized = true;
-    const chassisColor: [number, number, number] = [0.8, 0.2, 0.2]; 
-    const turretColor: [number, number, number] = [0.6, 0.1, 0.1];
+    
+    const bJSM = new Gfx3MeshJSM();
+    const tJSM = new Gfx3MeshJSM();
+    const brJSM = new Gfx3MeshJSM();
+    await Promise.all([
+        bJSM.loadFromFile('/models/tank_body.jsm'),
+        tJSM.loadFromFile('/models/tank_turret.jsm'),
+        brJSM.loadFromFile('/models/tank_barrel.jsm')
+    ]);
+
+    Enemy.bodyMesh = bJSM;
+    Enemy.turretMesh = tJSM;
+    Enemy.barrelMesh = brJSM;
+
     const trackColor: [number, number, number] = [0.15, 0.15, 0.15];
     const engineColor: [number, number, number] = [0.2, 0.2, 0.2];
 
-    // Defaults
-    Enemy.bodyMesh = createBoxMesh(1.5, 0.6, 2.2, chassisColor);
-    Enemy.turretMesh = createBoxMesh(1.1, 0.5, 1.1, turretColor);
-    Enemy.barrelMesh = createBoxMesh(0.2, 0.2, 1.5, [0.2, 0.2, 0.2]);
     Enemy.trackLMesh = createBoxMesh(0.4, 0.6, 2.4, trackColor);
     Enemy.trackRMesh = createBoxMesh(0.4, 0.6, 2.4, trackColor);
     Enemy.engineMesh = createBoxMesh(1.2, 0.4, 0.6, engineColor);
     Enemy.projMesh = createBoxMesh(0.6, 0.6, 0.6, [1.0, 0.2, 0.0]);
-
-    // Try high-fidelity override
-    try {
-      const bJSM = new Gfx3MeshJSM();
-      await bJSM.loadFromFile('/models/tank_body.jsm');
-      Enemy.bodyMesh = bJSM;
-    } catch(e) {
-      console.warn('Enemy: Failed to load JSM models, falling back to boxes.', e);
-    }
 
     Enemy.initialized = true;
   }
@@ -220,5 +218,15 @@ export class Enemy {
     const barrelRelativePos = q.rotateVector([0, 0, -0.8 + visualRecoil]);
     const matBarrel = UT.MAT4_TRANSFORM([origin[0] + turretOffset[0] + barrelRelativePos[0], origin[1] + turretOffset[1] + barrelRelativePos[1], origin[2] + turretOffset[2] + barrelRelativePos[2]], ZERO, scale, q);
     gfx3MeshRenderer.drawMesh(Enemy.barrelMesh, matBarrel);
+    
+    this.drawHealthBar(origin, this.hp, 100);
+  }
+
+  drawHealthBar(origin: vec3, hp: number, maxHp: number) {
+      const hpPercentage = Math.max(0, hp / maxHp);
+      const barColor: [number, number, number] = hpPercentage > 0.5 ? [0, 1, 0] : [1, 0, 0];
+      const barMesh = createBoxMesh(1.5 * hpPercentage, 0.2, 0.2, barColor);
+      const matBar = UT.MAT4_TRANSFORM([origin[0], origin[1] + 2.5, origin[2]], [0,0,0], [1,1,1], new Quaternion());
+      gfx3MeshRenderer.drawMesh(barMesh, matBar);
   }
 }

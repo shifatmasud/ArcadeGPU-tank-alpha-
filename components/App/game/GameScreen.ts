@@ -264,7 +264,7 @@ export class GameScreen extends Screen {
         let shakeX = 0, shakeY = 0, shakeZ = 0;
         const totalRecoil = this.tank.shellRecoil + this.tank.grenadeRecoil * 0.5;
         if (totalRecoil > 0) {
-            const mag = totalRecoil * 0.4;
+            const mag = totalRecoil * 0.1;
             shakeX = (Math.random() - 0.5) * mag;
             shakeY = (Math.random() - 0.5) * mag;
             shakeZ = (Math.random() - 0.5) * mag;
@@ -359,7 +359,7 @@ export class GameScreen extends Screen {
       layer: JOLT_LAYER_MOVING,
       settings: { 
           mMassPropertiesOverride: 0.1, 
-          mRestitution: 0.1, // Slight bounce
+          mRestitution: 0.025, // Reduced bounce by 75%
           mMotionQuality: Gfx3Jolt.EMotionQuality_LinearCast 
       }
     });

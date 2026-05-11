@@ -55,12 +55,12 @@ export class Explosion implements Poolable<Explosion> {
                 pos: [x, y, z], vel: [0, 0, 0], 
                 life: 0.15, maxLife: 0.15, 
                 colorIdx: 1, // Use brightest color
-                scaleMultiplier: scaleMultiplier * 15.0, 
+                scaleMultiplier: scaleMultiplier * 3.75, // 15 / 4
                 type: 'flash' 
             });
 
             // 2. Core Fireball (expands fast, dies quick)
-            for (let i = 0; i < numFire; i++) {
+            for (let i = 0; i < numFire / 4; i++) {
                 const pos: vec3 = [x + (Math.random() - 0.5) * 1.5, y + (Math.random() - 0.5) * 1.5, z + (Math.random() - 0.5) * 1.5];
                 const speed = (25 + Math.random() * 35);
                 
@@ -77,7 +77,7 @@ export class Explosion implements Poolable<Explosion> {
             }
             
             // 3. Smoke Puff (expands outwards then drifts up)
-            for (let i = 0; i < numSmoke; i++) {
+            for (let i = 0; i < numSmoke / 4; i++) {
                 const pos: vec3 = [x + (Math.random() - 0.5) * 2, y + (Math.random() - 0.5) * 2, z + (Math.random() - 0.5) * 2];
                 const speed = (10 + Math.random() * 25);
                 
@@ -94,7 +94,7 @@ export class Explosion implements Poolable<Explosion> {
             }
 
             // 4. Heavy debris chunks (fly up and fall)
-            for (let i = 0; i < numDebris; i++) {
+            for (let i = 0; i < numDebris / 4; i++) {
                 const pos: vec3 = [x + (Math.random() - 0.5), y + (Math.random() - 0.5), z + (Math.random() - 0.5)];
                 const speed = (15 + Math.random() * 25);
                 
