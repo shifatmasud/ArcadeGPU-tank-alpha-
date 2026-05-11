@@ -52,6 +52,8 @@ export class GameScreen extends Screen {
   projectiles: Projectile[] = [];
   shellMesh: Gfx3Mesh;
   grenadeMesh: Gfx3Mesh;
+  debugMuzzleMesh: Gfx3Mesh;
+  debugDirMesh: Gfx3Mesh;
   moveDir = { x: 0, y: 0 };
   virtualFireNormal: boolean = false;
   virtualFireGrenade: boolean = false;
@@ -81,6 +83,8 @@ export class GameScreen extends Screen {
     // Create base meshes for projectiles
     this.shellMesh = createBoxMesh(0.4, 0.4, 1.2, [1.0, 0.8, 0.2]); // Visible golden shell
     this.grenadeMesh = createBoxMesh(0.6, 0.6, 0.6, [0.4, 0.4, 0.4]); // Grenade body
+    this.debugMuzzleMesh = createBoxMesh(0.2, 0.2, 0.2, [1, 0, 0]);
+    this.debugDirMesh = createBoxMesh(0.05, 0.05, 2.0, [0, 0, 1]);
 
     // Spawn exactly 3 enemies as requested
     while (this.enemies.length < 3) {
@@ -148,7 +152,9 @@ export class GameScreen extends Screen {
   handleMouseMove = (data: any) => {
     if (inputManager.isPointerLockCaptured() || inputManager.isMouseDown()) {
        this.cameraYaw -= data.movementX * 0.005;
-       this.cameraPitch += data.movementY * 0.005;
+       // Fixed Camera Vertical Axis Reversal (Inverted behavior)
+       this.cameraPitch -= data.movementY * 0.005;
+       console.log('[DEBUG] Camera Rot (Yaw/Pitch):', this.cameraYaw, this.cameraPitch);
        
        // Limit pitch to avoid flipping over and going way below ground
        this.cameraPitch = Math.max(-0.1, Math.min(Math.PI / 2 - 0.1, this.cameraPitch));
@@ -280,13 +286,14 @@ export class GameScreen extends Screen {
     const bRot = this.tank.barrel.getQuaternion();
     const forward = bRot.rotateVector([0, 0, -1]);
     
-    let spawnX = bPos[0] + forward[0] * 2;
-    let spawnY = bPos[1] + forward[1] * 2;
-    let spawnZ = bPos[2] + forward[2] * 2;
+    // Muzzle is at exact cannon barrel forward extent (1.125 units from barrel center)
+    const muzzleOffset = 1.125;
+    let spawnX = bPos[0] + forward[0] * muzzleOffset;
+    let spawnY = bPos[1] + forward[1] * muzzleOffset;
+    let spawnZ = bPos[2] + forward[2] * muzzleOffset;
 
-    if (type === ProjectileType.SHELL) {
-        spawnY = 2.0; // Force enemy height level for shells
-    }
+    console.log(`[DEBUG] Shell Spawn Position: ${spawnX.toFixed(2)}, ${spawnY.toFixed(2)}, ${spawnZ.toFixed(2)}`);
+    console.log(`[DEBUG] Cannon Forward Dir: ${forward[0].toFixed(2)}, ${forward[1].toFixed(2)}, ${forward[2].toFixed(2)}`);
 
     this.spawnProjectile(type, spawnX, spawnY, spawnZ, bRot, 'player');
     
@@ -332,19 +339,25 @@ export class GameScreen extends Screen {
        gfx3MeshRenderer.drawMesh(p.mesh, matProj);
     }
     
+    // Draw Debug Muzzle & Direction
+    const bPos = this.tank.barrel.getPosition();
+    const bRot = this.tank.barrel.getQuaternion();
+    const forward = bRot.rotateVector([0, 0, -1]);
+    const muzzlePos = [bPos[0] + forward[0] * 1.125, bPos[1] + forward[1] * 1.125, bPos[2] + forward[2] * 1.125] as vec3;
+    
+    const matMuzzle = UT.MAT4_TRANSFORM(muzzlePos, ZERO, [1, 1, 1], new Quaternion());
+    gfx3MeshRenderer.drawMesh(this.debugMuzzleMesh, matMuzzle);
+    
+    const dirCenter = [muzzlePos[0] + forward[0] * 1.0, muzzlePos[1] + forward[1] * 1.0, muzzlePos[2] + forward[2] * 1.0] as vec3;
+    const matDir = UT.MAT4_TRANSFORM(dirCenter, ZERO, [1, 1, 1], bRot);
+    gfx3MeshRenderer.drawMesh(this.debugDirMesh, matDir);
+
     gfx3Manager.endDrawing();
   }
 
   spawnProjectile(type: ProjectileType, x: number, y: number, z: number, q: Quaternion, ownerId: string, speedMod: number = 1.0) {
     let finalY = y;
     let finalQ = q;
-
-    if (type === ProjectileType.SHELL) {
-        finalY = 2.0; // Maintain enemy height level
-        const directionRaw = q.rotateVector([0, 0, -1]);
-        const yaw = Math.atan2(-directionRaw[0], -directionRaw[2]);
-        finalQ = Quaternion.createFromEuler(yaw, 0, 0, 'YXZ'); // Horizontal projection
-    }
 
     const direction = finalQ.rotateVector([0, 0, -1]);
     const pMesh = type === ProjectileType.GRENADE ? this.grenadeMesh : this.shellMesh;

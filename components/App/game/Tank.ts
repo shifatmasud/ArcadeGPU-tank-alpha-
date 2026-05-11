@@ -241,7 +241,9 @@ export class Tank {
     
     // Apply pitch exclusively to the barrel/turret gun
     // Note: To pitch up, we rotate around X axis.
-    const pitchQ = Quaternion.createFromEuler(0, cameraPitch, 0, 'YXZ'); // pitch is X axis rotation
+    // Fixed: vertical axis reversal by using -cameraPitch
+    // [DEBUG] Synced camera to cannon
+    const pitchQ = Quaternion.createFromEuler(0, -cameraPitch, 0, 'YXZ'); // pitch is X axis rotation
     const barrelQ = Quaternion.multiply(turretQ, pitchQ);
 
     const turretOffset = q.rotateVector([0, 0.675, 0]);
@@ -277,30 +279,6 @@ export class Tank {
     this.barrel.draw();
     this.hatch.draw();
     this.antenna.draw();
-    
-    this.drawHealthBar(this.body.getPosition() as vec3, this.hp, 100);
-  }
-
-  drawHealthBar(origin: vec3, hp: number, maxHp: number) {
-      const hpPercentage = Math.max(0, hp / maxHp);
-      const barMesh = hpPercentage > 0.5 ? Tank.hpGreen : Tank.hpRed;
-      
-      const barWidth = 1.5;
-      const barHeight = 0.2;
-      const barDepth = 0.2;
-      
-      // Calculate scale and position to shrink towards the left
-      const scaleX = barWidth * hpPercentage;
-      const offsetX = (barWidth - scaleX) / 2; // Offset to keep the left edge static
-      
-      const matBar = UT.MAT4_TRANSFORM(
-          [origin[0] - offsetX, origin[1] + 3.0, origin[2]], 
-          [0, 0, 0], 
-          [scaleX, barHeight, barDepth], 
-          new Quaternion()
-      );
-      
-      gfx3MeshRenderer.drawMesh(barMesh, matBar);
   }
 }
 
