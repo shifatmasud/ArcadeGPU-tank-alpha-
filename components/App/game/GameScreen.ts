@@ -280,13 +280,9 @@ export class GameScreen extends Screen {
     const bRot = this.tank.barrel.getQuaternion();
     const forward = bRot.rotateVector([0, 0, -1]);
     
-    let spawnX = bPos[0] + forward[0] * 1.25;
-    let spawnY = bPos[1] + forward[1] * 1.25;
-    let spawnZ = bPos[2] + forward[2] * 1.25;
-
-    if (type === ProjectileType.SHELL) {
-        spawnY = 2.0; // Force enemy height level for shells
-    }
+    let spawnX = bPos[0] + forward[0] * 1.5;
+    let spawnY = bPos[1] + forward[1] * 1.5;
+    let spawnZ = bPos[2] + forward[2] * 1.5;
 
     this.spawnProjectile(type, spawnX, spawnY, spawnZ, bRot, 'player');
     
@@ -338,13 +334,6 @@ export class GameScreen extends Screen {
   spawnProjectile(type: ProjectileType, x: number, y: number, z: number, q: Quaternion, ownerId: string, speedMod: number = 1.0) {
     let finalY = y;
     let finalQ = q;
-
-    if (type === ProjectileType.SHELL) {
-        finalY = 2.0; // Maintain enemy height level
-        const directionRaw = q.rotateVector([0, 0, -1]);
-        const yaw = Math.atan2(-directionRaw[0], -directionRaw[2]);
-        finalQ = Quaternion.createFromEuler(yaw, 0, 0, 'YXZ'); // Horizontal projection
-    }
 
     const direction = finalQ.rotateVector([0, 0, -1]);
     const pMesh = type === ProjectileType.GRENADE ? this.grenadeMesh : this.shellMesh;
@@ -428,9 +417,9 @@ export class GameScreen extends Screen {
           for (const enemy of this.enemies) {
               if (enemy.hp <= 0) continue;
               const ePos = enemy.physicsBody.body.GetPosition();
-              const dist = UT.VEC3_DISTANCE(pPos3, [ePos.GetX(), ePos.GetY(), ePos.GetZ()]);
+              const dist = UT.VEC3_DISTANCE(pPos3, [ePos.GetX(), ePos.GetY() + 0.3, ePos.GetZ()]); // Offset y a bit to reach center of gravity
               
-              if (dist < 2.5) {
+              if (dist < 3.5) {
                   this.onProjectileHit(p, enemy, pPos3);
                   destroyed = true;
                   break;
@@ -438,8 +427,8 @@ export class GameScreen extends Screen {
           }
       } else {
           // Enemy projectiles vs Player
-          const distToPlayer = UT.VEC3_DISTANCE(pPos3, playerPos);
-          if (distToPlayer < 2.5) {
+          const distToPlayer = UT.VEC3_DISTANCE(pPos3, [playerPos[0], playerPos[1] + 0.5, playerPos[2]]);
+          if (distToPlayer < 3.5) {
               this.onProjectileHit(p, this.tank, pPos3);
               destroyed = true;
           }
@@ -447,9 +436,9 @@ export class GameScreen extends Screen {
 
       if (!destroyed) {
           // Environment Impact (Ground or Walls)
-          const hVelSq = curV.GetX()*curV.GetX() + curV.GetZ()*curV.GetZ();
-          const lastHVelSq = p.lastVel[0]*p.lastVel[0] + p.lastVel[2]*p.lastVel[2];
-          const impacted = pPos.GetY() < 0.2 || (p.life < 4.8 && Math.abs(lastHVelSq - hVelSq) > 200);
+          const hVelSq = curV.GetX()*curV.GetX() + curV.GetY()*curV.GetY() + curV.GetZ()*curV.GetZ();
+          const lastHVelSq = p.lastVel[0]*p.lastVel[0] + p.lastVel[1]*p.lastVel[1] + p.lastVel[2]*p.lastVel[2];
+          const impacted = pPos.GetY() < -15.0 || (p.life < 4.9 && Math.abs(lastHVelSq - hVelSq) > 1000);
 
           if (impacted) {
               this.onProjectileEnvironmentImpact(p, pPos3);
@@ -501,8 +490,6 @@ export class GameScreen extends Screen {
                   this.explosions.push(expDeath);
               }
               gfx3JoltManager.removeBody(target.physicsBody);
-              // Teleport far away to avoid ghost collisions (bug in some physics engines)
-              gfx3JoltManager.bodyInterface.SetPosition(target.physicsBody.body.GetID(), VEC3_TO_JOLT_RVEC3([0, -500, 0]), Gfx3Jolt.EActivation_DontActivate);
           }
       } else {
           // Hit Player
@@ -549,7 +536,6 @@ export class GameScreen extends Screen {
               
               if (enemy.hp <= 0) {
                   gfx3JoltManager.removeBody(enemy.physicsBody);
-                  gfx3JoltManager.bodyInterface.SetPosition(enemy.physicsBody.body.GetID(), VEC3_TO_JOLT_RVEC3([0, -500, 0]), Gfx3Jolt.EActivation_DontActivate);
               }
           }
       }
