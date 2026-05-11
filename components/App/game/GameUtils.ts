@@ -12,6 +12,10 @@ export function createBoxMesh(width: number, height: number, depth: number, colo
   return mesh;
 }
 
+export function createUnitBoxMesh(color: [number, number, number]): Gfx3Mesh {
+  return createBoxMesh(1, 1, 1, color);
+}
+
 export function createBoxGeo(width: number, height: number, depth: number, color: [number, number, number]) {
   const w = width / 2;
   const h = height / 2;
@@ -78,7 +82,7 @@ export function combineGeos(geos: { geo: any, matrix: mat4 }[]): Gfx3Mesh {
     const mesh = new Gfx3Mesh();
     mesh.setTag(0, 0, Gfx3MeshEffect.PIXELATION);
     mesh.beginVertices(combinedVertices.length / 17);
-    mesh.setVertices(combinedVertices);
+    mesh.setVertices(Array.from(combinedVertices));
     mesh.endVertices();
     return mesh;
 }

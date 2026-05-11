@@ -359,8 +359,7 @@ export class GameScreen extends Screen {
       layer: JOLT_LAYER_MOVING,
       settings: { 
           mMassPropertiesOverride: 0.1, 
-          mRestitution: 0.025, // Reduced bounce by 75%
-          mMotionQuality: Gfx3Jolt.EMotionQuality_LinearCast 
+          mRestitution: 0.025 // Reduced bounce by 75%
       }
     });
 
@@ -507,6 +506,7 @@ export class GameScreen extends Screen {
           }
       } else {
           // Hit Player
+          this.tank.hp -= dmg;
           const exp = this.explosionPool.acquire() as Explosion;
           if (exp) {
               exp.reset(hitPos[0], hitPos[1], hitPos[2], [1, 0.1, 0.1], undefined, 2.0);
@@ -535,6 +535,7 @@ export class GameScreen extends Screen {
   }
 
   applyAOE(origin: vec3, radius: number, damage: number) {
+      // Affect enemies
       for (const enemy of this.enemies) {
           if (enemy.hp <= 0) continue;
           const ePos = enemy.physicsBody.body.GetPosition();
@@ -551,6 +552,14 @@ export class GameScreen extends Screen {
                   gfx3JoltManager.bodyInterface.SetPosition(enemy.physicsBody.body.GetID(), VEC3_TO_JOLT_RVEC3([0, -500, 0]), Gfx3Jolt.EActivation_DontActivate);
               }
           }
+      }
+
+      // Affect player
+      const playerPos = this.tank.body.getPosition();
+      const distToPlayer = UT.VEC3_DISTANCE(origin, playerPos);
+      if (distToPlayer < radius) {
+          this.tank.hp -= damage;
+          this.tank.recoil = Math.max(this.tank.recoil, 1.0);
       }
   }
 

@@ -4,7 +4,7 @@ import { Gfx3MeshJSM } from '@lib/gfx3_mesh/gfx3_mesh_jsm';
 import { gfx3MeshRenderer } from '@lib/gfx3_mesh/gfx3_mesh_renderer';
 import { Quaternion } from '@lib/core/quaternion';
 import { UT } from '@lib/core/utils';
-import { createBoxMesh } from './GameUtils';
+import { createBoxMesh, createUnitBoxMesh } from './GameUtils';
 
 /**
  * The Enemy class represents an AI-controlled tank.
@@ -18,6 +18,8 @@ export class Enemy {
   static trackRMesh: Gfx3Mesh;
   static engineMesh: Gfx3Mesh;
   static projMesh: Gfx3Mesh;
+  static hpGreen: Gfx3Mesh;
+  static hpRed: Gfx3Mesh;
   static initialized = false;
 
   /**
@@ -57,6 +59,8 @@ export class Enemy {
     Enemy.trackRMesh = createBoxMesh(0.4, 0.6, 2.4, trackColor);
     Enemy.engineMesh = createBoxMesh(1.2, 0.4, 0.6, engineColor);
     Enemy.projMesh = createBoxMesh(0.6, 0.6, 0.6, [1.0, 0.2, 0.0]);
+    Enemy.hpGreen = createUnitBoxMesh([0, 1, 0]);
+    Enemy.hpRed = createUnitBoxMesh([1, 0, 0]);
 
     Enemy.initialized = true;
   }
@@ -234,9 +238,23 @@ export class Enemy {
 
   drawHealthBar(origin: vec3, hp: number, maxHp: number) {
       const hpPercentage = Math.max(0, hp / maxHp);
-      const barColor: [number, number, number] = hpPercentage > 0.5 ? [0, 1, 0] : [1, 0, 0];
-      const barMesh = createBoxMesh(1.5 * hpPercentage, 0.2, 0.2, barColor);
-      const matBar = UT.MAT4_TRANSFORM([origin[0], origin[1] + 2.5, origin[2]], [0,0,0], [1,1,1], new Quaternion());
+      const barMesh = hpPercentage > 0.5 ? Enemy.hpGreen : Enemy.hpRed;
+      
+      const barWidth = 1.5;
+      const barHeight = 0.2;
+      const barDepth = 0.2;
+      
+      // Calculate scale and position to shrink towards the left
+      const scaleX = barWidth * hpPercentage;
+      const offsetX = (barWidth - scaleX) / 2; // Offset to keep the left edge static
+      
+      const matBar = UT.MAT4_TRANSFORM(
+          [origin[0] - offsetX, origin[1] + 2.5, origin[2]], 
+          [0, 0, 0], 
+          [scaleX, barHeight, barDepth], 
+          new Quaternion()
+      );
+      
       gfx3MeshRenderer.drawMesh(barMesh, matBar);
   }
 }

@@ -4,7 +4,7 @@ import { Gfx3MeshJSM } from '@lib/gfx3_mesh/gfx3_mesh_jsm';
 import { gfx3MeshRenderer } from '@lib/gfx3_mesh/gfx3_mesh_renderer';
 import { Quaternion } from '@lib/core/quaternion';
 import { UT } from '@lib/core/utils';
-import { createBoxMesh } from './GameUtils';
+import { createBoxMesh, createUnitBoxMesh } from './GameUtils';
 
 /**
  * The Tank class represents the player-controlled vehicle.
@@ -12,6 +12,10 @@ import { createBoxMesh } from './GameUtils';
  * and integrates with Jolt Physics for movement.
  */
 export class Tank {
+  static hpGreen: Gfx3Mesh;
+  static hpRed: Gfx3Mesh;
+  static hpInit: boolean = false;
+
   body: Gfx3Mesh;
   turret: Gfx3Mesh;
   barrel: Gfx3Mesh;
@@ -29,8 +33,17 @@ export class Tank {
   wasFiringInternal: boolean = false;
   currentUp: vec3 = [0, 1, 0];
   hp: number = 100;
+  recoil: number = 0;
+
+  static initHPMeshes() {
+    if (Tank.hpInit) return;
+    Tank.hpGreen = createUnitBoxMesh([0, 1, 0]);
+    Tank.hpRed = createUnitBoxMesh([1, 0, 0]);
+    Tank.hpInit = true;
+  }
   
   constructor() {
+    Tank.initHPMeshes();
     const chassisColor: [number, number, number] = [0.4, 0.5, 0.3];
     const turretColor: [number, number, number] = [0.35, 0.45, 0.25];
     const trackColor: [number, number, number] = [0.15, 0.15, 0.15];
@@ -270,9 +283,23 @@ export class Tank {
 
   drawHealthBar(origin: vec3, hp: number, maxHp: number) {
       const hpPercentage = Math.max(0, hp / maxHp);
-      const barColor: [number, number, number] = hpPercentage > 0.5 ? [0, 1, 0] : [1, 0, 0];
-      const barMesh = createBoxMesh(1.5 * hpPercentage, 0.2, 0.2, barColor);
-      const matBar = UT.MAT4_TRANSFORM([origin[0], origin[1] + 3.0, origin[2]], [0,0,0], [1,1,1], new Quaternion());
+      const barMesh = hpPercentage > 0.5 ? Tank.hpGreen : Tank.hpRed;
+      
+      const barWidth = 1.5;
+      const barHeight = 0.2;
+      const barDepth = 0.2;
+      
+      // Calculate scale and position to shrink towards the left
+      const scaleX = barWidth * hpPercentage;
+      const offsetX = (barWidth - scaleX) / 2; // Offset to keep the left edge static
+      
+      const matBar = UT.MAT4_TRANSFORM(
+          [origin[0] - offsetX, origin[1] + 3.0, origin[2]], 
+          [0, 0, 0], 
+          [scaleX, barHeight, barDepth], 
+          new Quaternion()
+      );
+      
       gfx3MeshRenderer.drawMesh(barMesh, matBar);
   }
 }
