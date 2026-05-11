@@ -241,9 +241,8 @@ export class Tank {
     
     // Apply pitch exclusively to the barrel/turret gun
     // Note: To pitch up, we rotate around X axis.
-    // Fixed: vertical axis reversal by using -cameraPitch
-    // [DEBUG] Synced camera to cannon
-    const pitchQ = Quaternion.createFromEuler(0, -cameraPitch, 0, 'YXZ'); // pitch is X axis rotation
+    // Fixed: vertical axis reversal by using cameraPitch (removed minus sign since cameraPitch was flipped in GameScreen)
+    const pitchQ = Quaternion.createFromEuler(0, cameraPitch, 0, 'YXZ'); // pitch is X axis rotation
     const barrelQ = Quaternion.multiply(turretQ, pitchQ);
 
     const turretOffset = q.rotateVector([0, 0.675, 0]);
@@ -263,6 +262,32 @@ export class Tank {
     const antennaOffset = turretQ.rotateVector([-0.6, 0.375 + 0.75, 0.6]);
     this.antenna.setPosition(turretPos[0] + antennaOffset[0], turretPos[1] + antennaOffset[1], turretPos[2] + antennaOffset[2]);
     this.antenna.setQuaternion(turretQ);
+
+    // Update 3D Health Bar (above the tank)
+    const healthBarOffset = [0, 4.0, 0] as vec3;
+    const hbPos = [pos.GetX() + healthBarOffset[0], pos.GetY() + healthBarOffset[1], pos.GetZ() + healthBarOffset[2]] as vec3;
+    const hpRatio = Math.max(0, this.hp / 100);
+    
+    // Use static meshes but update transforms for this instance
+    Tank.hpRed.setPosition(hbPos[0], hbPos[1], hbPos[2]);
+    Tank.hpRed.setScale(4.0, 0.4, 0.1);
+    // Face the health bar towards camera (yaw logic)
+    const hbYawQ = Quaternion.createFromEuler(cameraYaw, 0, 0, 'YXZ');
+    Tank.hpRed.setQuaternion(hbYawQ);
+
+    // Offset the green bar slightly to the left so it shrinks towards one side
+    const greenOffset = (1.0 - hpRatio) * 2.0;
+    const greenPos = q.rotateVector([-greenOffset, 0, 0]); // This might be complex, let's keep it simple for now
+    
+    // Actually, easier to just use the yaw-aligned orientation for the offset
+    const cosY = Math.cos(cameraYaw);
+    const sinY = Math.sin(cameraYaw);
+    const offsetX = -greenOffset * cosY;
+    const offsetZ = greenOffset * sinY;
+
+    Tank.hpGreen.setPosition(hbPos[0] + offsetX, hbPos[1], hbPos[2] + offsetZ);
+    Tank.hpGreen.setScale(4.0 * hpRatio, 0.4, 0.1);
+    Tank.hpGreen.setQuaternion(hbYawQ);
     
     return { normal: didShootNormal, grenade: didShootGrenade };
   }
@@ -279,6 +304,10 @@ export class Tank {
     this.barrel.draw();
     this.hatch.draw();
     this.antenna.draw();
+
+    // Draw Health Bar
+    Tank.hpRed.draw();
+    Tank.hpGreen.draw();
   }
 }
 

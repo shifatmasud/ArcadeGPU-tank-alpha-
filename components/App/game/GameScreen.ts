@@ -148,8 +148,8 @@ export class GameScreen extends Screen {
   handleMouseMove = (data: any) => {
     if (inputManager.isPointerLockCaptured() || inputManager.isMouseDown()) {
        this.cameraYaw -= data.movementX * 0.015;
-       // Fixed Camera Vertical Axis Reversal (Inverted behavior)
-       this.cameraPitch -= data.movementY * 0.015;
+       // Fixed Camera Vertical Axis Reversal
+       this.cameraPitch += data.movementY * 0.015;
        
        // Limit pitch to avoid flipping over and going way below ground
        this.cameraPitch = Math.max(-0.1, Math.min(Math.PI / 2 - 0.1, this.cameraPitch));
@@ -334,7 +334,7 @@ export class GameScreen extends Screen {
       layer: JOLT_LAYER_MOVING,
       settings: { 
           mMassPropertiesOverride: 0.1, 
-          mRestitution: 0.025 // Reduced bounce by 75%
+          mRestitution: 0.0
       }
     });
 
