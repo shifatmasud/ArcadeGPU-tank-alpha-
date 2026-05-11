@@ -15,8 +15,7 @@ import {
     DeviceMobile, 
     Gear,
     Info,
-    BoundingBox,
-    Heart
+    BoundingBox
 } from 'phosphor-react';
 import { GameScreen } from './game/GameScreen';
 
@@ -63,71 +62,6 @@ const useWindowSize = () => {
 };
 
 // --- UI COMPONENTS ---
-
-const PlayerHealthBar = ({ gameScreenRef }: { gameScreenRef: React.MutableRefObject<GameScreen | null> }) => {
-    const fillRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        let frame: number;
-        const tick = () => {
-             if (gameScreenRef.current && fillRef.current) {
-                 const hp = gameScreenRef.current.tank.hp;
-                 const hpPercent = Math.max(0, hp / 100) * 100;
-                 fillRef.current.style.width = `${hpPercent}%`;
-                 fillRef.current.style.backgroundColor = hpPercent > 50 ? '#4ade80' : Tokens.colors.accent;
-             }
-             frame = requestAnimationFrame(tick);
-        };
-        frame = requestAnimationFrame(tick);
-        
-        // Output debug log for UI anchored position requirement
-        console.log('[DEBUG] UI Anchor Position: PlayerHealthBar fixed at top-center (translateX(-50%)) in Screen-Space UI.');
-        return () => cancelAnimationFrame(frame);
-    }, []);
-
-    return (
-        <div style={{ 
-            position: 'absolute', 
-            top: Tokens.spacing.lg, 
-            left: '50%', 
-            transform: 'translateX(-50%)', 
-            width: '280px', 
-            height: '24px', 
-            background: Tokens.colors.surface, 
-            borderRadius: Tokens.radius.md, 
-            border: `1px solid ${Tokens.colors.border}`, 
-            overflow: 'hidden', 
-            pointerEvents: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-        }}>
-            {/* Background track */}
-            <div style={{ position: 'absolute', inset: 0, background: Tokens.colors.surfaceLight }} />
-            
-            {/* Fill bar */}
-            <div ref={fillRef} style={{ 
-                height: '100%', 
-                width: '100%', 
-                background: '#4ade80', 
-                transition: 'width 0.1s linear, background-color 0.2s',
-                position: 'relative',
-                zIndex: 1
-            }} />
-
-            {/* Icon Overlay */}
-            <div style={{
-                position: 'absolute',
-                left: Tokens.spacing.sm,
-                zIndex: 2,
-                display: 'flex',
-                alignItems: 'center',
-                color: '#fff'
-            }}>
-                <Heart size={14} weight="fill" />
-            </div>
-        </div>
-    );
-};
 
 const StatBlock = ({ label, value, icon: Icon }: { label: string, value: string | number, icon?: any }) => (
     <div style={{
@@ -383,9 +317,6 @@ const App = () => {
                         {!isMobile && <StatBlock label="System" value="OK" icon={Gear} />}
                     </div>
                 </div>
-
-                {/* Player Health Bar (Fixed Screen-Space UI) */}
-                <PlayerHealthBar gameScreenRef={gameScreenRef} />
 
                 <div style={{ display: 'flex', gap: Tokens.spacing.sm, pointerEvents: 'auto' }}>
                     {isDesktop && (

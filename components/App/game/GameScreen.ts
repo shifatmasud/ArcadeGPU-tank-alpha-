@@ -147,9 +147,8 @@ export class GameScreen extends Screen {
 
   handleMouseMove = (data: any) => {
     if (inputManager.isPointerLockCaptured() || inputManager.isMouseDown()) {
-       this.cameraYaw -= data.movementX * 0.015;
-       // Fixed Camera Vertical Axis Reversal
-       this.cameraPitch += data.movementY * 0.015;
+       this.cameraYaw -= data.movementX * 0.005;
+       this.cameraPitch += data.movementY * 0.005;
        
        // Limit pitch to avoid flipping over and going way below ground
        this.cameraPitch = Math.max(-0.1, Math.min(Math.PI / 2 - 0.1, this.cameraPitch));
@@ -281,11 +280,13 @@ export class GameScreen extends Screen {
     const bRot = this.tank.barrel.getQuaternion();
     const forward = bRot.rotateVector([0, 0, -1]);
     
-    // Muzzle is at exact cannon barrel forward extent (1.125 units from barrel center)
-    const muzzleOffset = 1.125;
-    let spawnX = bPos[0] + forward[0] * muzzleOffset;
-    let spawnY = bPos[1] + forward[1] * muzzleOffset;
-    let spawnZ = bPos[2] + forward[2] * muzzleOffset;
+    let spawnX = bPos[0] + forward[0] * 1.25;
+    let spawnY = bPos[1] + forward[1] * 1.25;
+    let spawnZ = bPos[2] + forward[2] * 1.25;
+
+    if (type === ProjectileType.SHELL) {
+        spawnY = 2.0; // Force enemy height level for shells
+    }
 
     this.spawnProjectile(type, spawnX, spawnY, spawnZ, bRot, 'player');
     
@@ -304,22 +305,46 @@ export class GameScreen extends Screen {
 
     const camPos = this.camera.getPosition();
     this.level.draw(camPos);
-    this.tank.draw();
+    this.tank.draw(this.cameraYaw);
     for (const enemy of this.enemies) {
-       enemy.draw();
+       enemy.draw(this.cameraYaw);
     }
     for (const exp of this.explosions) {
        exp.draw();
     }
 
     // Draw active projectiles
+    const scaleShell: vec3 = [1.5, 1.5, 1.5];
+    const scaleGrenade: vec3 = [1.2, 1.2, 1.2];
+    const ZERO: vec3 = [0, 0, 0];
 
+    for (const p of this.projectiles) {
+       const pPos = p.body.body.GetPosition();
+       const pRot = p.body.body.GetRotation();
+       const q = new Quaternion(pRot.GetW(), pRot.GetX(), pRot.GetY(), pRot.GetZ());
+       
+       const matProj = UT.MAT4_TRANSFORM(
+           [pPos.GetX(), pPos.GetY(), pPos.GetZ()], 
+           ZERO, 
+           p.type === ProjectileType.GRENADE ? scaleGrenade : scaleShell, 
+           q
+       );
+       gfx3MeshRenderer.drawMesh(p.mesh, matProj);
+    }
+    
     gfx3Manager.endDrawing();
   }
 
   spawnProjectile(type: ProjectileType, x: number, y: number, z: number, q: Quaternion, ownerId: string, speedMod: number = 1.0) {
     let finalY = y;
     let finalQ = q;
+
+    if (type === ProjectileType.SHELL) {
+        finalY = 2.0; // Maintain enemy height level
+        const directionRaw = q.rotateVector([0, 0, -1]);
+        const yaw = Math.atan2(-directionRaw[0], -directionRaw[2]);
+        finalQ = Quaternion.createFromEuler(yaw, 0, 0, 'YXZ'); // Horizontal projection
+    }
 
     const direction = finalQ.rotateVector([0, 0, -1]);
     const pMesh = type === ProjectileType.GRENADE ? this.grenadeMesh : this.shellMesh;
@@ -334,7 +359,7 @@ export class GameScreen extends Screen {
       layer: JOLT_LAYER_MOVING,
       settings: { 
           mMassPropertiesOverride: 0.1, 
-          mRestitution: 0.0
+          mRestitution: 0.025 // Reduced bounce by 75%
       }
     });
 
@@ -465,7 +490,7 @@ export class GameScreen extends Screen {
           // Visuals
           const exp = this.explosionPool.acquire() as Explosion;
           if (exp) {
-              exp.reset(hitPos[0], hitPos[1], hitPos[2], [1, 0.6, 0.2], undefined, p.type === ProjectileType.GRENADE ? 3.0 : 1.2);
+              exp.reset(hitPos[0], hitPos[1], hitPos[2], [1, 0.6, 0.2], undefined, p.type === ProjectileType.GRENADE ? 3.0 : 0.12);
               this.explosions.push(exp);
           }
 
@@ -484,7 +509,7 @@ export class GameScreen extends Screen {
           this.tank.hp -= dmg;
           const exp = this.explosionPool.acquire() as Explosion;
           if (exp) {
-              exp.reset(hitPos[0], hitPos[1], hitPos[2], [1, 0.1, 0.1], undefined, 2.0);
+              exp.reset(hitPos[0], hitPos[1], hitPos[2], [1, 0.1, 0.1], undefined, 0.2);
               this.explosions.push(exp);
           }
           // Recoil/Shake for player
@@ -500,7 +525,7 @@ export class GameScreen extends Screen {
       const exp = this.explosionPool.acquire() as Explosion;
       if (exp) {
           const color: [number, number, number] = p.type === ProjectileType.GRENADE ? [0.8, 0.4, 0.1] : [0.6, 0.6, 0.6];
-          exp.reset(pos[0], pos[1], pos[2], color, undefined, p.type === ProjectileType.GRENADE ? 4.0 : 0.3, p.type === ProjectileType.GRENADE ? 'grenade' : undefined);
+          exp.reset(pos[0], pos[1], pos[2], color, undefined, p.type === ProjectileType.GRENADE ? 4.0 : 1.0, p.type === ProjectileType.GRENADE ? 'grenade' : undefined);
           this.explosions.push(exp);
       }
 

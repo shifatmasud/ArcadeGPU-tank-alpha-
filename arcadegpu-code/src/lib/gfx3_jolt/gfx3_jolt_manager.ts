@@ -104,7 +104,7 @@ class Gfx3JoltManager {
     this.raycastObjectFilter = new Gfx3Jolt.ObjectLayerFilter();
     this.raycastBodyFilter = new Gfx3Jolt.BodyFilter();
     this.raycastShapeFilter = new Gfx3Jolt.ShapeFilter();
-    this.showDebug = false;
+    this.showDebug = true;
     this.entitiesMap = new Map();
     this.entities = [];
     

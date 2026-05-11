@@ -186,10 +186,13 @@ export class Enemy {
     const pos = this.physicsBody.body.GetPosition();
     const bPos = [pos.GetX() + barrelRelativePos[0], pos.GetY() + 0.45 + barrelRelativePos[1], pos.GetZ() + barrelRelativePos[2]];
 
+    // Barrel length is 1.5, so half-length is 0.75. 
+    // We add a small offset to ensure it's just outside the tip.
+    const tipOffset = 0.85; 
     const startPos = [
-      bPos[0] + direction[0] * 1.5,
-      bPos[1] + direction[1] * 1.5,
-      bPos[2] + direction[2] * 1.5,
+      bPos[0] + direction[0] * tipOffset,
+      bPos[1] + direction[1] * tipOffset,
+      bPos[2] + direction[2] * tipOffset,
     ];
     
     return {
@@ -198,7 +201,7 @@ export class Enemy {
     };
   }
 
-  draw() {
+  draw(cameraYaw: number = 0) {
     if (this.hp <= 0) return;
 
     const scale: vec3 = [1, 1, 1];
@@ -233,10 +236,10 @@ export class Enemy {
     const matBarrel = UT.MAT4_TRANSFORM([origin[0] + turretOffset[0] + barrelRelativePos[0], origin[1] + turretOffset[1] + barrelRelativePos[1], origin[2] + turretOffset[2] + barrelRelativePos[2]], ZERO, scale, q);
     gfx3MeshRenderer.drawMesh(Enemy.barrelMesh, matBarrel);
     
-    this.drawHealthBar(origin, this.hp, 100);
+    this.drawHealthBar(origin, this.hp, 100, cameraYaw);
   }
 
-  drawHealthBar(origin: vec3, hp: number, maxHp: number) {
+  drawHealthBar(origin: vec3, hp: number, maxHp: number, cameraYaw: number = 0) {
       const hpPercentage = Math.max(0, hp / maxHp);
       const barMesh = hpPercentage > 0.5 ? Enemy.hpGreen : Enemy.hpRed;
       
@@ -244,15 +247,21 @@ export class Enemy {
       const barHeight = 0.2;
       const barDepth = 0.2;
       
-      // Calculate scale and position to shrink towards the left
+      // Calculate scale
       const scaleX = barWidth * hpPercentage;
-      const offsetX = (barWidth - scaleX) / 2; // Offset to keep the left edge static
+      
+      // Billboarding
+      const barRotation = Quaternion.createFromEuler(cameraYaw, 0, 0, 'YXZ');
+      
+      // Offset local
+      const offsetLocal = [-(barWidth - scaleX) / 2, 0, 0] as vec3;
+      const offsetWorld = barRotation.rotateVector(offsetLocal);
       
       const matBar = UT.MAT4_TRANSFORM(
-          [origin[0] - offsetX, origin[1] + 2.5, origin[2]], 
+          [origin[0] + offsetWorld[0], origin[1] + 2.5, origin[2] + offsetWorld[2]], 
           [0, 0, 0], 
           [scaleX, barHeight, barDepth], 
-          new Quaternion()
+          barRotation
       );
       
       gfx3MeshRenderer.drawMesh(barMesh, matBar);

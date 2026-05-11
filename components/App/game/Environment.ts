@@ -104,15 +104,75 @@ export class Environment {
         layer: JOLT_LAYER_NON_MOVING
     });
 
-    // Generate cityscape / buildings / trees - REMOVED for clean testing
+    // Generate cityscape / buildings / trees
+    for (let i = 0; i < 50; i++) {
+        const x = (Math.random() - 0.5) * 350;
+        const z = (Math.random() - 0.5) * 350;
+        
+        // Clear space near spawn
+        if (Math.abs(x) < 20 && Math.abs(z) < 20) continue;
+        
+        const type = Math.random();
+        
+        if (type < 0.4) {
+            // Tree
+            const trunkHeight = 2 + Math.random() * 2;
+            this.decorations.push({ type: 'trunk', pos: [x, trunkHeight / 2, z], scale: [0.8, trunkHeight, 0.8] });
+            
+            // Leaves
+            const leavesHeight = 3 + Math.random() * 2;
+            const leavesSize = 3 + Math.random();
+            this.decorations.push({ type: 'leaves', pos: [x, trunkHeight + leavesHeight / 2 - 0.5, z], scale: [leavesSize, leavesHeight, leavesSize] });
+            
+            gfx3JoltManager.addBox({
+                width: 1.5, height: 10, depth: 1.5,
+                x, y: 5, z,
+                motionType: Gfx3Jolt.EMotionType_Static,
+                layer: JOLT_LAYER_NON_MOVING
+            });
+        } else if (type < 0.7) {
+            // Building
+            const width = 10 + Math.random() * 15;
+            const depth = 10 + Math.random() * 15;
+            const height = 10 + Math.random() * 25;
+            this.decorations.push({ type: 'building', pos: [x, height / 2, z], scale: [width, height, depth] });
+            
+            gfx3JoltManager.addBox({
+                width, height, depth,
+                x, y: height / 2, z,
+                motionType: Gfx3Jolt.EMotionType_Static,
+                layer: JOLT_LAYER_NON_MOVING
+            });
+        } else {
+            // Random Wall / Obstacle
+            const width = 5 + Math.random() * 10;
+            const depth = 2 + Math.random() * 3;
+            const height = 3 + Math.random() * 5;
+            const isRotated = Math.random() > 0.5;
+            
+            const wallW = isRotated ? depth : width;
+            const wallD = isRotated ? width : depth;
+            
+            this.decorations.push({ type: 'sandWall', pos: [x, height / 2, z], scale: [wallW, height, wallD] });
+            
+            gfx3JoltManager.addBox({
+                width: wallW, height, depth: wallD,
+                x, y: height / 2, z,
+                motionType: Gfx3Jolt.EMotionType_Static,
+                layer: JOLT_LAYER_NON_MOVING
+            });
+        }
+    }
     
     this.initBatch();
 
-    // Add physics crates (test objects)
-    // Reduce total box object count to 5 for cleaner testing and improved performance clarity.
-    // Maintain even spacing between remaining objects.
-    for (let i = 0; i < 5; i++) {
-        this.addCrate(-20 + i * 10, 5, 20); // 5 crates spaced evenly by 10 units
+    // Add physics crates
+    for (let i = 0; i < 6; i++) {
+        this.addCrate(
+            (Math.random() - 0.5) * 60, 
+            5 + Math.random() * 15, 
+            (Math.random() - 0.5) * 60
+        );
     }
     
     // Add clouds
