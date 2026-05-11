@@ -6,10 +6,11 @@ A high-performance 3D Tank Game built with the **ArcadeGPU** engine. This projec
 
 **Remix:** [ai.studio/apps/cd4779aa-58fb-43a6-8a2f-757bb5829982](https://ai.studio/apps/cd4779aa-58fb-43a6-8a2f-757bb5829982)
 
-## 🎮 Game Version: v0.3.1
+## 🎮 Game Version: v0.4.0
 *   **Engine:** ArcadeGPU v1.0
 *   **Theme:** Retro-Arcade / Cyberpunk
 *   **Performance:** 60FPS Target
+*   **Update:** Disabled debug overlays, boosted sensitivity, and tuned impact effects.
 
 ## 🎮 How to Play
 

@@ -52,8 +52,6 @@ export class GameScreen extends Screen {
   projectiles: Projectile[] = [];
   shellMesh: Gfx3Mesh;
   grenadeMesh: Gfx3Mesh;
-  debugMuzzleMesh: Gfx3Mesh;
-  debugDirMesh: Gfx3Mesh;
   moveDir = { x: 0, y: 0 };
   virtualFireNormal: boolean = false;
   virtualFireGrenade: boolean = false;
@@ -83,8 +81,6 @@ export class GameScreen extends Screen {
     // Create base meshes for projectiles
     this.shellMesh = createBoxMesh(0.4, 0.4, 1.2, [1.0, 0.8, 0.2]); // Visible golden shell
     this.grenadeMesh = createBoxMesh(0.6, 0.6, 0.6, [0.4, 0.4, 0.4]); // Grenade body
-    this.debugMuzzleMesh = createBoxMesh(0.2, 0.2, 0.2, [1, 0, 0]);
-    this.debugDirMesh = createBoxMesh(0.05, 0.05, 2.0, [0, 0, 1]);
 
     // Spawn exactly 3 enemies as requested
     while (this.enemies.length < 3) {
@@ -151,10 +147,9 @@ export class GameScreen extends Screen {
 
   handleMouseMove = (data: any) => {
     if (inputManager.isPointerLockCaptured() || inputManager.isMouseDown()) {
-       this.cameraYaw -= data.movementX * 0.005;
+       this.cameraYaw -= data.movementX * 0.015;
        // Fixed Camera Vertical Axis Reversal (Inverted behavior)
-       this.cameraPitch -= data.movementY * 0.005;
-       console.log('[DEBUG] Camera Rot (Yaw/Pitch):', this.cameraYaw, this.cameraPitch);
+       this.cameraPitch -= data.movementY * 0.015;
        
        // Limit pitch to avoid flipping over and going way below ground
        this.cameraPitch = Math.max(-0.1, Math.min(Math.PI / 2 - 0.1, this.cameraPitch));
@@ -292,9 +287,6 @@ export class GameScreen extends Screen {
     let spawnY = bPos[1] + forward[1] * muzzleOffset;
     let spawnZ = bPos[2] + forward[2] * muzzleOffset;
 
-    console.log(`[DEBUG] Shell Spawn Position: ${spawnX.toFixed(2)}, ${spawnY.toFixed(2)}, ${spawnZ.toFixed(2)}`);
-    console.log(`[DEBUG] Cannon Forward Dir: ${forward[0].toFixed(2)}, ${forward[1].toFixed(2)}, ${forward[2].toFixed(2)}`);
-
     this.spawnProjectile(type, spawnX, spawnY, spawnZ, bRot, 'player');
     
     // Muzzle Flash
@@ -321,36 +313,6 @@ export class GameScreen extends Screen {
     }
 
     // Draw active projectiles
-    const scaleShell: vec3 = [1.5, 1.5, 1.5];
-    const scaleGrenade: vec3 = [1.2, 1.2, 1.2];
-    const ZERO: vec3 = [0, 0, 0];
-
-    for (const p of this.projectiles) {
-       const pPos = p.body.body.GetPosition();
-       const pRot = p.body.body.GetRotation();
-       const q = new Quaternion(pRot.GetW(), pRot.GetX(), pRot.GetY(), pRot.GetZ());
-       
-       const matProj = UT.MAT4_TRANSFORM(
-           [pPos.GetX(), pPos.GetY(), pPos.GetZ()], 
-           ZERO, 
-           p.type === ProjectileType.GRENADE ? scaleGrenade : scaleShell, 
-           q
-       );
-       gfx3MeshRenderer.drawMesh(p.mesh, matProj);
-    }
-    
-    // Draw Debug Muzzle & Direction
-    const bPos = this.tank.barrel.getPosition();
-    const bRot = this.tank.barrel.getQuaternion();
-    const forward = bRot.rotateVector([0, 0, -1]);
-    const muzzlePos = [bPos[0] + forward[0] * 1.125, bPos[1] + forward[1] * 1.125, bPos[2] + forward[2] * 1.125] as vec3;
-    
-    const matMuzzle = UT.MAT4_TRANSFORM(muzzlePos, ZERO, [1, 1, 1], new Quaternion());
-    gfx3MeshRenderer.drawMesh(this.debugMuzzleMesh, matMuzzle);
-    
-    const dirCenter = [muzzlePos[0] + forward[0] * 1.0, muzzlePos[1] + forward[1] * 1.0, muzzlePos[2] + forward[2] * 1.0] as vec3;
-    const matDir = UT.MAT4_TRANSFORM(dirCenter, ZERO, [1, 1, 1], bRot);
-    gfx3MeshRenderer.drawMesh(this.debugDirMesh, matDir);
 
     gfx3Manager.endDrawing();
   }
@@ -538,7 +500,7 @@ export class GameScreen extends Screen {
       const exp = this.explosionPool.acquire() as Explosion;
       if (exp) {
           const color: [number, number, number] = p.type === ProjectileType.GRENADE ? [0.8, 0.4, 0.1] : [0.6, 0.6, 0.6];
-          exp.reset(pos[0], pos[1], pos[2], color, undefined, p.type === ProjectileType.GRENADE ? 4.0 : 1.0, p.type === ProjectileType.GRENADE ? 'grenade' : undefined);
+          exp.reset(pos[0], pos[1], pos[2], color, undefined, p.type === ProjectileType.GRENADE ? 4.0 : 0.3, p.type === ProjectileType.GRENADE ? 'grenade' : undefined);
           this.explosions.push(exp);
       }
 
