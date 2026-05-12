@@ -280,9 +280,16 @@ export class GameScreen extends Screen {
     const bRot = this.tank.barrel.getQuaternion();
     const forward = bRot.rotateVector([0, 0, -1]);
     
-    let spawnX = bPos[0] + forward[0] * 1.5;
-    let spawnY = bPos[1] + forward[1] * 1.5;
-    let spawnZ = bPos[2] + forward[2] * 1.5;
+    // Account for barrel recoil in spawn position offset
+    // Barrel mesh is ~2.25 deep, center is offset by 1.2. 
+    // Tip is at ~1.125 from center.
+    // We add a bit more (1.5) and subtract current recoil to keep it at fixed tip world pos if possible.
+    const recoilOffset = (this.tank.shellRecoil * 0.45);
+    const tipOffset = 1.6 - recoilOffset;
+
+    let spawnX = bPos[0] + forward[0] * tipOffset;
+    let spawnY = bPos[1] + forward[1] * tipOffset;
+    let spawnZ = bPos[2] + forward[2] * tipOffset;
 
     this.spawnProjectile(type, spawnX, spawnY, spawnZ, bRot, 'player');
     
@@ -344,6 +351,7 @@ export class GameScreen extends Screen {
       height: type === ProjectileType.GRENADE ? 0.6 : 0.4,
       depth: type === ProjectileType.GRENADE ? 0.6 : 1.2,
       x: x, y: finalY, z: z,
+      rotation: new Gfx3Jolt.Quat(finalQ.x, finalQ.y, finalQ.z, finalQ.w),
       motionType: Gfx3Jolt.EMotionType_Dynamic,
       layer: JOLT_LAYER_MOVING,
       settings: { 
@@ -436,9 +444,9 @@ export class GameScreen extends Screen {
 
       if (!destroyed) {
           // Environment Impact (Ground or Walls)
-          const hVelSq = curV.GetX()*curV.GetX() + curV.GetY()*curV.GetY() + curV.GetZ()*curV.GetZ();
-          const lastHVelSq = p.lastVel[0]*p.lastVel[0] + p.lastVel[1]*p.lastVel[1] + p.lastVel[2]*p.lastVel[2];
-          const impacted = pPos.GetY() < -15.0 || (p.life < 4.9 && Math.abs(lastHVelSq - hVelSq) > 1000);
+          // Use vector distance to catch direction changes (bounces) effectively
+          const velDiff = UT.VEC3_DISTANCE(p.lastVel, [curV.GetX(), curV.GetY(), curV.GetZ()]);
+          const impacted = pPos.GetY() < -15.0 || (p.life < 4.98 && velDiff > 20);
 
           if (impacted) {
               this.onProjectileEnvironmentImpact(p, pPos3);
