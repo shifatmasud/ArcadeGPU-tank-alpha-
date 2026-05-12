@@ -132,8 +132,14 @@ export class GameScreen extends Screen {
     inputManager.registerAction('keyboard', 'KeyR', 'CAM_Z_IN');
     inputManager.registerAction('keyboard', 'KeyF', 'CAM_Z_OUT');
     inputManager.registerAction('keyboard', 'Space', 'FIRE');
+    inputManager.registerAction('keyboard', 'KeyE', 'FIRE_ALT'); // Alt grenade fire
+    inputManager.registerAction('keyboard', 'ShiftLeft', 'FIRE_ALT'); 
+    // Mouse button mapping is handled via isMouseDown for Left, 
+    // but we can register if we have button indices in InputSource, but currently we don't.
+    // However handleGlobalPointerDown handles right click. 
+    // Let's add Shift for grenade.
 
-    inputManager.setPointerLockEnabled(false);
+    inputManager.setPointerLockEnabled(true);
     eventManager.subscribe(inputManager, 'E_MOUSE_MOVE', this, this.handleMouseMove);
 
     this.camera.setPosition(0, 10, -10);
@@ -179,9 +185,10 @@ export class GameScreen extends Screen {
     combinedMoveDir.x = Math.max(-1, Math.min(1, combinedMoveDir.x));
     combinedMoveDir.y = Math.max(-1, Math.min(1, combinedMoveDir.y));
 
-    const currentFiringInput = inputManager.isActiveAction('FIRE') || (inputManager.isMouseDown() && inputManager.isPointerLockCaptured());
+    const currentFiringInput = inputManager.isActiveAction('FIRE') || 
+                          (inputManager.isMouseDown() && inputManager.isPointerLockCaptured() && !inputManager.isActiveAction('FIRE_ALT'));
     const isFiringNormal = this.virtualFireNormal || currentFiringInput;
-    const isFiringGrenade = this.virtualFireGrenade || this.rightClickFire;
+    const isFiringGrenade = this.virtualFireGrenade || this.rightClickFire || inputManager.isActiveAction('FIRE_ALT');
 
     this.level.update(ts);
 
@@ -399,6 +406,10 @@ export class GameScreen extends Screen {
       p.life -= ts / 1000;
 
       if (p.life <= 0) {
+        // Explode on life expiry for grenades
+        if (p.type === ProjectileType.GRENADE) {
+            this.onProjectileEnvironmentImpact(p, pPos3);
+        }
         gfx3JoltManager.removeBody(p.body);
         this.projectiles.splice(i, 1);
         continue;

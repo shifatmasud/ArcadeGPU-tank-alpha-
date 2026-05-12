@@ -245,12 +245,14 @@ export class Tank {
     const pitchQ = Quaternion.createFromEuler(0, -cameraPitch, 0, 'YXZ'); // pitch is X axis rotation
     const barrelQ = Quaternion.multiply(turretQ, pitchQ);
 
-    const turretOffset = q.rotateVector([0, 0.675, 0]);
+    // Increase turret elevation to sit properly on body top (body height 0.9 -> top 0.45)
+    // Turret height 0.75 -> center at 0.45 + 0.375 = 0.825. Using 0.85 for safety.
+    const turretOffset = q.rotateVector([0, 0.85, 0]);
     this.turret.setPosition(pos.GetX() + turretOffset[0], pos.GetY() + turretOffset[1], pos.GetZ() + turretOffset[2]);
     this.turret.setQuaternion(turretQ);
 
     const visualRecoil = this.shellRecoil > 0 ? this.shellRecoil * 0.45 : 0;
-    const barrelRelativePos = barrelQ.rotateVector([0, 0, -1.2 + visualRecoil]);
+    const barrelRelativePos = barrelQ.rotateVector([0, 0.1, -1.2 + visualRecoil]); // Slightly elevate barrel center
     const turretPos = this.turret.getPosition();
     this.barrel.setPosition(turretPos[0] + barrelRelativePos[0], turretPos[1] + barrelRelativePos[1], turretPos[2] + barrelRelativePos[2]);
     this.barrel.setQuaternion(barrelQ);

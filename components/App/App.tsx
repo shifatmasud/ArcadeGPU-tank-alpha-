@@ -374,12 +374,13 @@ const App = () => {
             }}>
                 {/* Movement */}
                 <div style={{ pointerEvents: 'auto' }}>
-                    {(isMobile || isTablet) && (
+                    {!isDesktop && (
                         <Joystick onChange={(dir) => { if (gameScreenRef.current) gameScreenRef.current.moveDir = dir; }} />
                     )}
                 </div>
 
                 {/* Actions */}
+                {!isDesktop && (
                 <div style={{
                     display: 'flex',
                     flexDirection: isMobile ? 'column' : 'row',
@@ -402,6 +403,7 @@ const App = () => {
                         />
                     </div>
                 </div>
+                )}
             </div>
 
             <div style={{
